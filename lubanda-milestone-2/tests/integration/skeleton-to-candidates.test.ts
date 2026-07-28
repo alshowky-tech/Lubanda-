@@ -85,7 +85,7 @@ const buildRealInput = async (seed = 42): Promise<{
       graph: {
         personsById: new Map(),
         childrenByParentId: new Map(),
-        roots: Object.freeze([]) as PersonId[],
+        roots: Object.freeze([]) as unknown as readonly PersonId[],
         getAncestors: () => [],
         getDescendants: () => [],
         getSubtree: () => [],
