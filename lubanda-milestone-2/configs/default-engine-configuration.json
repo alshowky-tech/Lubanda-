@@ -54,7 +54,8 @@
   },
   "labels": {
     "minimumFontSize": 12,
-    "maximumRotationDegrees": 20
+    "maximumRotationDegrees": 20,
+    "maximumBacktrackDepth": 10
   },
   "stability": {
     "priorLayoutWeight": 0.75,

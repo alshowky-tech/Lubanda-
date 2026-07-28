@@ -62,7 +62,7 @@ const concaveQuery = (): CandidateCollisionQuery => {
 };
 
 const BID = "b1" as SkeletonBranchId;
-const CFG = { minimumFontSize: 12, maximumRotationDegrees: 20 };
+const CFG = { minimumFontSize: 12, maximumRotationDegrees: 20, maximumBacktrackDepth: 10 };
 
 const makeBranch = (): SkeletonBranch => ({
   id: BID,
@@ -77,16 +77,19 @@ const makeBranch = (): SkeletonBranch => ({
   metadata: Object.freeze({ branchIndex: 1, lineageRootId: "p1" as PersonId, person: null as any }),
 });
 
-const makeC = (overrides?: Partial<LabelCandidate>): LabelCandidate => ({
-  personId: "p1" as PersonId,
-  bounds: { minX: 0, minY: 0, maxX: 50, maxY: 12 },
-  anchor: { x: 5, y: 5 }, rotation: 0, leaderLength: 0,
-  family: "ALIGNED_WITH_BRANCH",
-  validationStatus: "VALID",
-  rejectionReasons: Object.freeze([]),
-  score: null, componentScores: undefined,
-  ...overrides,
-});
+const makeC = (overrides?: Partial<LabelCandidate>): LabelCandidate => {
+  const base = {
+    candidateId: "c:p1:0",
+    personId: "p1" as PersonId,
+    bounds: { minX: 0, minY: 0, maxX: 50, maxY: 12 },
+    anchor: { x: 5, y: 5 }, rotation: 0, leaderLength: 0,
+    family: "ALIGNED_WITH_BRANCH" as LabelCandidate["family"],
+    validationStatus: "VALID" as const,
+    rejectionReasons: Object.freeze([]),
+    score: null, componentScores: undefined as Readonly<Record<string, number>> | undefined,
+  };
+  return { ...base, ...overrides } as LabelCandidate;
+};
 
 // ── Concave boundary tests A–G ──
 

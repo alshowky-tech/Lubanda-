@@ -57,6 +57,7 @@ export const DEFAULT_ENGINE_CONFIGURATION: EngineConfiguration = Object.freeze({
   labels: Object.freeze({
     minimumFontSize: 12,
     maximumRotationDegrees: 20,
+    maximumBacktrackDepth: 10,
   }),
   stability: Object.freeze({
     priorLayoutWeight: 0.75,

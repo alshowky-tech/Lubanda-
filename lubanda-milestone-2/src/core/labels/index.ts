@@ -7,3 +7,5 @@ export * from "./CandidateCollisionQuery.js";
 export * from "./LabelCandidateGenerator.js";
 export * from "./LabelCandidateScorer.js";
 export * from "./LabelCandidateValidator.js";
+export * from "./LabelCollisionQuery.js";
+export * from "./LabelAssignmentEngine.js";

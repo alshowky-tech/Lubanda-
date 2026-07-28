@@ -168,6 +168,8 @@ export class DeterministicLabelCandidateGenerator {
     };
   }
 
+  #candidateSeq = 0;
+
   private makeCandidate(
     personId: PersonId,
     bounds: Bounds,
@@ -176,7 +178,10 @@ export class DeterministicLabelCandidateGenerator {
     leaderLength: number,
     family: LabelCandidateFamily,
   ): LabelCandidate {
+    const seq = this.#candidateSeq;
+    this.#candidateSeq += 1;
     return Object.freeze({
+      candidateId: `c:${String(personId)}:${seq}`,
       personId,
       bounds: Object.freeze({ ...bounds }),
       anchor: Object.freeze({ ...anchor }),
