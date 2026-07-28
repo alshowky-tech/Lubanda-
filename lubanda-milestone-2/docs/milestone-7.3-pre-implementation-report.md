@@ -139,10 +139,18 @@ The following are detected and rejected by M7.2 `LabelCandidateValidator`. The s
 
 ### 5.3 Endpoint-touch rules
 
-- Touching at the same person's own anchor point is **exempt** (the leader connects to the person's own branch endpoint, which is on the boundary).
-- Touching at any other point is a hard violation (treated as PENETRATION with distance = 0).
-- Leader endpoint resting exactly on another leader endpoint without crossing is **allowed** (an ENDPOINT_TOUCH or COLLINEAR_TOUCH from segment intersection is not a crossing).
-- Leader endpoint resting exactly on another label's AABB boundary is **NOT allowed** (bounds overlap includes the boundary).
+All dynamic comparisons involve candidates/placements belonging to **different persons**. Candidates of the same person are partition-exclusive — at most one is selected, so no same-person dynamic comparison occurs. The own-branch self-anchor exemption is an M7.2 fixed-obstacle concern and does not apply here.
+
+Cross-person leader contact policy (using the existing `intersectSegments` return types from M3):
+
+| Intersection kind | Applies to | Ruling |
+|---|---|---|
+| `PROPER` | Leader–leader, leader–label bounds | **CONFLICT** — segments cross at an interior point |
+| `COLLINEAR_OVERLAP` | Leader–leader | **CONFLICT** — segments lie on the same line and overlap over a non-zero interval |
+| `ENDPOINT_TOUCH` | Leader–leader | **ALLOWED** — one leader endpoint touches another leader segment endpoint or interior without proper crossing |
+| `COLLINEAR_TOUCH` | Leader–leader | **ALLOWED** — collinear segments meeting at a single endpoint |
+| `ENDPOINT_TOUCH` | Leader ↔ label bounds | **CONFLICT** — a leader endpoint touching a label's AABB boundary is treated as overlap because bounds contain their boundary (closed intervals) |
+| **AABB overlap** | Label bounds ↔ label bounds | **CONFLICT** — any overlap of closed intervals is a conflict (LCS-LBL-003 "no overlap") |
 
 ---
 
@@ -184,18 +192,45 @@ for person in personsOrderedByDifficulty:
 
 ### 6.3 Decision frame
 
-Each assignment of a candidate to a person creates a **decision frame** consisting of:
-- The person being assigned.
-- The selected candidate (with its bounds, anchor, leader geometry).
-- The resulting `placements` array state at that point.
+Each assignment of a candidate to a person creates a **decision frame** recording:
+
+| Field | Type | Description |
+|---|---|---|
+| `personId` | `PersonId` | The person being assigned. |
+| `selectedCandidateIndex` | integer | Index of the candidate selected for this person (from the person's ordered candidate list). |
+| `nextCandidateIndex` | integer | Index of the candidate to try next if this frame is backtracked (selectedCandidateIndex + 1). |
+| `placement` | `LabelPlacement` | The placement object added to the placements array. |
+
+The decision frame does **not** store a copy of the full placements array. Instead, the backtrack operation removes the placement and restores the previous state by removing the placement at the known position.
 
 ### 6.4 Backtracking scope
 
-When backtracking is triggered, the solver may reconsider **only the most recently placed persons** in LIFO order (chronological backtracking). It does **not** perform random restarts or global reordering.
+When backtracking is triggered, the solver considers **only the most recently placed persons** in strict LIFO order (chronological backtracking). The deterministic person order is never changed — backtracking pops frames from the decision stack in reverse order and attempts the next untried candidate for each popped person. It does **not** perform random restarts, global reordering, or re-sorting.
+
+Backtracking procedure:
+1. Pop the most recent decision frame from the stack.
+2. Remove its placement from the placements array.
+3. Try the next candidate (at `nextCandidateIndex`) for that same person.
+4. If a non-conflicting candidate is found, push a new frame and retry the originally stuck person.
+5. If no candidate fits, pop the next frame and repeat.
+6. If the budget is exhausted or the stack is empty, record `BACKTRACK_EXHAUSTED` for the stuck person and continue.
 
 ### 6.5 Backtracking budget
 
-The backtracking budget is supplied through `LabelConfig` (the `maximumBacktrackDepth` field, which does not yet exist and would be added as part of M7.3). It is a configurable positive integer. No hard-coded default is defined by the specification. An engineering decision will set a default (proposed: 10) before implementation.
+The backtracking budget is defined by a new `LabelConfig` field:
+
+```ts
+readonly maximumBacktrackDepth: number;
+```
+
+| Property | Value |
+|---|---|
+| **Accepted range** | 0 to 100 inclusive |
+| **Default value** | 10 |
+| **Meaning** | Maximum number of chronological decision frames (persons) that may be reconsidered when attempting to find room for one stuck person. Each popped frame counts as one unit, regardless of how many candidate alternatives exist for that frame. |
+| **Value 0** | Disables backtracking entirely — the solver acts as pure greedy. |
+| **Exhausted behaviour** | The solver records `BACKTRACK_EXHAUSTED` for the current person and continues to the next person in the deterministic order. |
+| **Validation** | Negative values and non-integer values MUST be rejected at configuration validation time (M1 pattern: `TypeError`). |
 
 If the configured budget is exhausted without finding a valid assignment, the solver records `BACKTRACK_EXHAUSTED` for the current person and **continues** to the next person without retrying further.
 
@@ -210,29 +245,26 @@ interface LabelCollisionQuery {
   /** True if candidate's bounds overlap placed bounds. */
   overlapsPlacedLabel(candidateBounds: Bounds, placement: LabelPlacement): boolean;
 
-  /** True if candidate's leader segment intersects placed bounds.
-   *  Leader endpoint at own anchor is exempt. */
+  /** True if candidate's leader segment intersects placed bounds. */
   leaderCrossesPlacedLabel(
-    leaderStart: Vec2, leaderEnd: Vec2, placement: LabelPlacement, ownAnchor?: Vec2,
+    leaderStart: Vec2, leaderEnd: Vec2, placement: LabelPlacement,
   ): boolean;
 
-  /** True if candidate's bounds intersect a placed leader segment.
-   *  See leaderCrossesPlacedLabel for anchor exemption. */
+  /** True if candidate's bounds intersect a placed leader segment. */
   labelCrossesPlacedLeader(
     candidateBounds: Bounds, placedLeaderStart: Vec2, placedLeaderEnd: Vec2,
   ): boolean;
 
   /** True if two leader segments properly intersect or collinearly overlap.
-   *  Endpoint-touch without crossing is allowed. */
-  leadersCross(
-    a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2, ownAnchorA?: Vec2, ownAnchorB?: Vec2,
-  ): boolean;
+   *  Endpoint-touch without crossing is allowed (ENDPOINT_TOUCH, COLLINEAR_TOUCH). */
+  leadersCross(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2): boolean;
 }
 ```
 
 This abstraction:
 - Does NOT replace or duplicate the M4.2 collision engine.
 - Does NOT test branch envelopes, templates, or fixed obstacles (those are M7.2).
+- Operates exclusively on candidate-vs-placement geometry; all dynamic comparisons are cross-person (same-person candidates are partition-exclusive).
 - Is implementable using the existing `boundsOverlap` and `intersectSegments` geometry primitives from M3.
 - Is fully deterministic.
 
@@ -244,17 +276,19 @@ This abstraction:
 
 ```
 (validCandidateCount ascending,
- dynamicConflictDegree descending,
+ staticConflictDegree descending,
  generation ascending,
  personId ascending)
 ```
 
-| Key | Type | Rationale |
-|---|---|---|
-| `validCandidateCount` | integer | Fewest candidates first (LCS-LBL-003: "fewest candidates"). Persons with fewer options get priority. |
-| `dynamicConflictDegree` | integer | Estimated number of already-placed placements this person's candidates overlap. Higher → more constrained → earlier. Estimated by sampling. |
-| `generation` | integer | Ancestors before descendants. Root-adjacent labels placed first. |
-| `personId` | `PersonId` | Lexicographic; fully deterministic tie-break. |
+| Key | Type | Definition | Rationale |
+|---|---|---|---|
+| `validCandidateCount` | integer | Count of VALID candidates for this person | Fewest candidates first (LCS-LBL-003: "fewest candidates"). Persons with fewer options get priority. |
+| `staticConflictDegree` | integer | Number of distinct persons whose any VALID candidate has a conflict edge with any VALID candidate of this person. Computed once before assignment by pairwise candidate geometry checks. | Higher degree → more constrained → earlier placement. No dependence on current placements. No sampling. |
+| `generation` | integer | Skeleton generation of this person's branch | Ancestors before descendants. Root-adjacent labels placed first. |
+| `personId` | `PersonId` | Lexicographic ascending | Fully deterministic tie-break. |
+
+The conflict edge test uses the same dynamic checks as §5.2 (bounds overlap, leader–label, leader–leader) but operates on candidate-vs-candidate geometry before any placement exists. Two persons conflict if any VALID candidate of person A conflicts with any VALID candidate of person B.
 
 ### 8.2 Candidate ordering within one person (determines selection order)
 
@@ -407,7 +441,7 @@ Milestone 7.3 will NOT implement:
 |---|---|---|
 | T1 | At most one placement per person | LCS-LBL-003, LNGP-R3-06 §1 |
 | T2 | Deterministic greedy with bounded chronological backtracking | LCS-LBL-003 |
-| T3 | Backtrack budget from `LabelConfig.maximumBacktrackDepth` | Engineering decision; no default in spec |
+| T3 | Backtrack budget from `LabelConfig.maximumBacktrackDepth`, default 10, range 0–100, validated against negative/non-integer | Engineering decision (see §6.5) |
 | T4 | Label–Label conflict via `overlapsPlacedLabel` | §7 this report |
 | T5 | Leader–leader crossing via `leadersCross` | LCS-LBL-003 "no crossing leader lines" |
 | T6 | Separate person-ordering and candidate-ordering tuples | §8 this report |
