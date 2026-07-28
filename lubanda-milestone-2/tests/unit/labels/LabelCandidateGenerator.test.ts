@@ -10,6 +10,7 @@ import type {
   CandidateCollisionQuery,
   LabelPlacement,
 } from "../../../src/core/labels/types.js";
+import { resolveTextDirection } from "../../../src/core/labels/types.js";
 
 const FONT_PATH = new URL("../../../fonts/DejaVuSans.ttf", import.meta.url).pathname;
 
@@ -28,6 +29,7 @@ class MockCollisionQuery implements CandidateCollisionQuery {
   leaderCrossesFixedObstacle(_a: Vec2, _b: Vec2): boolean { return this._leaderCross; }
   minClearanceToFixedBranches(_p: Vec2): number { return this._clearance; }
   boundaryClearance(_p: Vec2): number { return this.boundaryClearanceVal; }
+  minBoundsBoundaryClearance(_b: Bounds): number { return this._inside ? 10 : -1; }
 }
 
 const FAKE_PID = "p1" as PersonId;
@@ -114,6 +116,18 @@ const buildInput = async (
     fixedLabelPlacements: Object.freeze([]),
   };
 };
+
+describe("resolveTextDirection", () => {
+  it("Latin-only text resolves to LTR", () => {
+    expect(resolveTextDirection("Hello World")).toBe("LTR");
+    expect(resolveTextDirection("John Smith ID-125")).toBe("LTR");
+  });
+
+  it("Arabic text resolves to RTL", () => {
+    expect(resolveTextDirection("السلام")).toBe("RTL");
+    expect(resolveTextDirection("محمد ID-125")).toBe("RTL");
+  });
+});
 
 describe("DeterministicLabelCandidateGenerator", () => {
   it("generates 4+ candidates for a non-trunk branch", async () => {

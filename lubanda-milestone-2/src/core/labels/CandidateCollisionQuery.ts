@@ -30,26 +30,34 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
     for (const entry of candidates) {
       if (!boundsOverlap(entry.envelopeBounds, bounds)) continue;
 
-      // Skip if this is the candidate's OWN branch and the overlap is
-      // within the circular self-anchor attachment zone
       if (entry.branchId === candidateBranchId) {
-        // Only exempt geometry that is strictly within the anchor-radius circle.
-        // Check all four corners of the bounds: if any corner is outside the
-        // exemption circle, the overlap is real.
-        const corners: Vec2[] = [
-          { x: bounds.minX, y: bounds.minY },
-          { x: bounds.maxX, y: bounds.minY },
-          { x: bounds.maxX, y: bounds.maxY },
-          { x: bounds.minX, y: bounds.maxY },
-        ];
-        const allInsideAnchor = corners.every(
-          (c) => distance(c, anchor) <= anchorRadius + EPSILON,
-        );
-        if (allInsideAnchor) continue; // exempted
-        // Otherwise the overlap is real (label extends beyond anchor zone)
+        // Self-anchor exemption: sample the INTERSECTION of candidate AABB
+        // and branch envelope AABB. Only if ALL sampled points of the
+        // intersecting region are inside the anchor circle, exempt.
+        const overlapMinX = Math.max(bounds.minX, entry.envelopeBounds.minX);
+        const overlapMinY = Math.max(bounds.minY, entry.envelopeBounds.minY);
+        const overlapMaxX = Math.min(bounds.maxX, entry.envelopeBounds.maxX);
+        const overlapMaxY = Math.min(bounds.maxY, entry.envelopeBounds.maxY);
+
+        // Uniform grid sampling of the overlap rectangle (3×3 = 9 points)
+        // This is deterministic and adequately dense for AABB-overlap testing.
+        const xSamples = 3;
+        const ySamples = 3;
+        let allInside = true;
+        for (let xi = 0; xi < xSamples; xi += 1) {
+          const px = overlapMinX + (overlapMaxX - overlapMinX) * (xi / (xSamples - 1));
+          for (let yi = 0; yi < ySamples; yi += 1) {
+            const py = overlapMinY + (overlapMaxY - overlapMinY) * (yi / (ySamples - 1));
+            if (distance({ x: px, y: py }, anchor) > anchorRadius + EPSILON) {
+              allInside = false;
+            }
+          }
+        }
+        if (allInside) continue; // exempted — the entire overlap is within the attachment zone
+        // Otherwise the overlap extends outside the anchor circle → real collision
       }
 
-      return true; // Other branch always collides
+      return true;
     }
     return false;
   }
@@ -125,5 +133,20 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
       if (d < minDist) minDist = d;
     }
     return minDist;
+  }
+
+  minBoundsBoundaryClearance(bounds: Bounds): number {
+    const corners: Vec2[] = [
+      { x: bounds.minX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.maxY },
+      { x: bounds.minX, y: bounds.maxY },
+    ];
+    let minClear = Infinity;
+    for (const corner of corners) {
+      const d = this.boundaryClearance(corner);
+      if (d < minClear) minClear = d;
+    }
+    return minClear;
   }
 }

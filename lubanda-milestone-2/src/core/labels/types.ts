@@ -54,6 +54,7 @@ export type CandidateValidationStatus = "VALID" | "INVALID";
 export type CandidateRejectionCode =
   | "BRANCH_PENETRATION"
   | "BOUNDARY_VIOLATION"
+  | "BOUNDARY_CLEARANCE_FAILED"
   | "INSUFFICIENT_CLEARANCE"
   | "ROTATION_EXCEEDS_LIMIT"
   | "GLYPH_OVERFLOW"
@@ -157,6 +158,10 @@ export interface CandidateCollisionQuery {
 
   /** Minimum distance from point to the template boundary polygon edge. */
   boundaryClearance(point: Vec2): number;
+
+  /** Minimum distance from any corner of the AABB to boundary polygon edges.
+   *  Returns the smallest corner-to-edge distance. */
+  minBoundsBoundaryClearance(bounds: Bounds): number;
 }
 
 // ── Label layout input ────────────────────────────────────────────────
@@ -292,9 +297,20 @@ export interface GeneratedCandidatesResult {
 
 // ── Direction resolver ────────────────────────────────────────────────
 
-/** Detect if text contains Arabic/Persian script characters. */
+/**
+ * Resolve base paragraph direction from script content.
+ *
+ * If the text contains any Arabic/Persian script characters (U+0600–U+08FF),
+ * the base direction is RTL. Otherwise it is LTR.
+ *
+ * This resolves the overall paragraph direction only. Internal mixed-direction
+ * runs (e.g., Arabic name containing a Latin ID) are handled by the
+ * M7.1 TextMeasurementService which applies bidi processing via BidiProcessor
+ * (UAX #9) to correctly order the glyph runs for measurement and rendering.
+ *
+ * The resolution is deterministic: same text always produces the same direction.
+ */
 const HAS_ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
 
-/** Resolve text direction based on script content. */
 export const resolveTextDirection = (text: string): TextDirection =>
   HAS_ARABIC_RE.test(text) ? "RTL" : "LTR";

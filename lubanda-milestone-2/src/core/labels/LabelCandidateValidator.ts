@@ -66,6 +66,12 @@ export const validateCandidate = (
     reasons.push({ code: "BOUNDARY_VIOLATION", message: "Candidate extends outside template boundary" });
   }
 
+  // 5b. Boundary clearance — minimum corner-to-boundary-edge distance
+  const boundaryClear = collisionQuery.minBoundsBoundaryClearance(candidate.bounds);
+  if (boundaryClear < EPSILON) {
+    reasons.push({ code: "BOUNDARY_CLEARANCE_FAILED", message: `Candidate within ${boundaryClear} of boundary, below tolerance` });
+  }
+
   // 6. Fixed label overlap
   if (collisionQuery.overlapsFixedLabel(candidate.bounds, fixedPlacements)) {
     reasons.push({ code: "OVERLAPS_FIXED_LABEL", message: "Overlaps already-placed label" });

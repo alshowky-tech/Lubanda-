@@ -23,6 +23,7 @@ class MockQuery implements CandidateCollisionQuery {
   leaderCrossesFixedObstacle(_a: Vec2, _b: Vec2): boolean { return this.leaderCross; }
   minClearanceToFixedBranches(_p: Vec2): number { return this.clearance; }
   boundaryClearance(_p: Vec2): number { return 100; }
+  minBoundsBoundaryClearance(_b: Bounds): number { return 100; }
 }
 
 const makeBranch = (id: string): SkeletonBranch => ({
