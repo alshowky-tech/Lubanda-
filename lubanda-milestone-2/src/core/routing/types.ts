@@ -13,6 +13,14 @@ export type RoutingRecordStatus =
   | "TERMINAL"
   | "BLOCKED";
 
+// ── Obstacle clearance record ─────────────────────────────────────────
+
+export interface ObstacleClearanceRecord {
+  readonly obstacleBranchId: SkeletonBranchId;
+  readonly requiredClearance: number;
+  readonly sampledMinSegmentDistance: number;
+}
+
 // ── Routing record ────────────────────────────────────────────────────
 
 export interface RoutingRecord {
@@ -32,6 +40,7 @@ export interface RoutingRecord {
   readonly routingPriority: number;
   readonly corridorPolygon: Polygon;
   readonly obstacleBranchIds: readonly SkeletonBranchId[];
+  readonly obstacleClearances: readonly ObstacleClearanceRecord[];
   readonly status: RoutingRecordStatus;
   readonly diagnostics: readonly RoutingDiagnostic[];
 }

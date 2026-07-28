@@ -2,6 +2,7 @@ import type { EngineIssue } from "../contracts/issues.js";
 import type { SkeletonBranchId } from "../contracts/identifiers.js";
 import type { SkeletonPlan, SkeletonBranch } from "../skeleton/types.js";
 import type { RoutingPlan, RoutingRecord } from "./types.js";
+import { polygonArea } from "../territory/polygon-geometry.js";
 
 const issue = (
   code: string,
@@ -12,7 +13,7 @@ const issue = (
   code,
   severity: "ERROR" as const,
   messageKey,
-  stage: "FREEZE_SKELETON" as unknown as "FREEZE_SKELETON",
+  stage: "VALIDATE_SKELETON" as const,
   ...(entityIds.length === 0 ? {} : { entityIds }),
   ...(details ? { details } : {}),
   recoverable: true,
@@ -116,22 +117,39 @@ export class RoutingValidator {
         );
       }
 
-      // 8. Corridor checks
-      if (record.corridorPolygon.points.length < 3) {
-        issues.push(
-          issue("ROUTING_EMPTY_CORRIDOR", "routing.emptyCorridor", [record.branchId]),
-        );
-      }
-      for (const pt of record.corridorPolygon.points) {
-        if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) {
+      // 8. Corridor checks based on status
+      if (record.status === "BLOCKED") {
+        // BLOCKED must have an empty corridor (or degenerate)
+        if (record.corridorPolygon.points.length >= 3) {
           issues.push(
-            issue("ROUTING_INVALID_CORRIDOR", "routing.invalidCorridor", [record.branchId]),
+            issue("ROUTING_BLOCKED_WITH_VALID_CORRIDOR", "routing.blockedWithValidCorridor", [record.branchId]),
           );
-          break;
+        }
+      } else {
+        // ROUTABLE or TERMINAL must have a finite positive-area corridor
+        if (record.corridorPolygon.points.length < 3) {
+          issues.push(
+            issue("ROUTING_EMPTY_CORRIDOR", "routing.emptyCorridor", [record.branchId]),
+          );
+        } else {
+          const area = polygonArea(record.corridorPolygon);
+          if (area <= 0) {
+            issues.push(
+              issue("ROUTING_ZERO_AREA_CORRIDOR", "routing.zeroAreaCorridor", [record.branchId]),
+            );
+          }
+          for (const pt of record.corridorPolygon.points) {
+            if (!Number.isFinite(pt.x) || !Number.isFinite(pt.y)) {
+              issues.push(
+                issue("ROUTING_INVALID_CORRIDOR", "routing.invalidCorridor", [record.branchId]),
+              );
+              break;
+            }
+          }
         }
       }
 
-      // 9. Obstacle IDs
+      // 9. Obstacle IDs and clearance records
       if (record.obstacleBranchIds.length > 0) {
         const uniqueObs = new Set(record.obstacleBranchIds);
         if (uniqueObs.size !== record.obstacleBranchIds.length) {
@@ -145,11 +163,50 @@ export class RoutingValidator {
             issue("ROUTING_DUPLICATE_OBSTACLE", "routing.duplicateObstacle", [...new Set(dups)]),
           );
         }
-        // Branch must not list itself
         if (record.obstacleBranchIds.includes(record.branchId)) {
           issues.push(
             issue("ROUTING_SELF_OBSTACLE", "routing.selfObstacle", [record.branchId]),
           );
+        }
+
+        // Obstacle clearance records must exist for each obstacle
+        const clearanceMap = new Map(
+          record.obstacleClearances.map((c) => [c.obstacleBranchId, c]),
+        );
+        for (const obsId of record.obstacleBranchIds) {
+          const cr = clearanceMap.get(obsId);
+          if (!cr) {
+            issues.push(
+              issue("ROUTING_MISSING_CLEARANCE_RECORD", "routing.missingClearanceRecord", [record.branchId, obsId]),
+            );
+          } else {
+            // Validate pairwise clearance values
+            if (!Number.isFinite(cr.requiredClearance) || cr.requiredClearance < 0) {
+              issues.push(
+                issue("ROUTING_INVALID_CLEARANCE", "routing.invalidClearance", [record.branchId, obsId]),
+              );
+            }
+            if (!Number.isFinite(cr.sampledMinSegmentDistance) || cr.sampledMinSegmentDistance < 0) {
+              issues.push(
+                issue("ROUTING_INVALID_SAMPLED_DISTANCE", "routing.invalidSampledDistance", [record.branchId, obsId]),
+              );
+            }
+            // requiredClearance must be >= each pairwise clearance
+            if (cr.requiredClearance > record.requiredClearance) {
+              issues.push(
+                issue("ROUTING_CLEARANCE_EXCEEDS_MAX", "routing.clearanceExceedsMax", [record.branchId, obsId]),
+              );
+            }
+          }
+        }
+
+        // No extra clearance records without matching obstacle
+        for (const cr of record.obstacleClearances) {
+          if (!record.obstacleBranchIds.includes(cr.obstacleBranchId)) {
+            issues.push(
+              issue("ROUTING_EXTRA_CLEARANCE_RECORD", "routing.extraClearanceRecord", [record.branchId, cr.obstacleBranchId]),
+            );
+          }
         }
       }
 
@@ -158,16 +215,38 @@ export class RoutingValidator {
         (r) => r.routingPriority === record.routingPriority,
       );
       if (samePriority.length > 1) {
-        // Only flag once per priority value
         const alreadyFlagged = issues.some(
-          (i) => i.details && "priority" in i.details && (i.details as Record<string, unknown>).priority === record.routingPriority,
+          (i) => i.details && "priority" in i.details &&
+            (i.details as Record<string, unknown>).priority === record.routingPriority,
         );
         if (!alreadyFlagged) {
           issues.push(
-            issue("ROUTING_DUPLICATE_PRIORITY", "routing.duplicatePriority", 
+            issue("ROUTING_DUPLICATE_PRIORITY", "routing.duplicatePriority",
               samePriority.map((r) => r.branchId),
               { priority: record.routingPriority },
             ),
+          );
+        }
+      }
+
+      // 11. Topology equality against skeleton
+      if (skeletonBranch) {
+        if (record.parentBranchId !== skeletonBranch.parentBranchId) {
+          issues.push(
+            issue("ROUTING_TOPOLOGY_MISMATCH", "routing.topologyMismatch", [record.branchId],
+              { field: "parentBranchId" }),
+          );
+        }
+        if (record.startNodeId !== skeletonBranch.startNodeId) {
+          issues.push(
+            issue("ROUTING_TOPOLOGY_MISMATCH", "routing.topologyMismatch", [record.branchId],
+              { field: "startNodeId" }),
+          );
+        }
+        if (record.endNodeId !== skeletonBranch.endNodeId) {
+          issues.push(
+            issue("ROUTING_TOPOLOGY_MISMATCH", "routing.topologyMismatch", [record.branchId],
+              { field: "endNodeId" }),
           );
         }
       }

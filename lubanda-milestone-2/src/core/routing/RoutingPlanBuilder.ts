@@ -4,6 +4,7 @@ import { computeBranchRadius, computeRequiredClearance } from "./ClearanceModel.
 import { buildBranchCorridor } from "./CorridorBuilder.js";
 import { RoutingDiagnosticCollector } from "./RoutingDiagnostics.js";
 import { sampleCubicBezier } from "../geometry/bezier.js";
+import { intersectSegments } from "../geometry/segments.js";
 import { distance } from "../geometry/vec2.js";
 import { polygonArea } from "../territory/polygon-geometry.js";
 import type {
@@ -11,6 +12,7 @@ import type {
   RoutingRecord,
   RoutingInput,
   RoutingPlanBuilder as RoutingPlanBuilderContract,
+  ObstacleClearanceRecord,
 } from "./types.js";
 import type { SkeletonBranch } from "../skeleton/types.js";
 import type { SkeletonBranchId } from "../contracts/identifiers.js";
@@ -21,6 +23,67 @@ const DEFAULT_MAX_BEND_ANGLE = 0.45 * Math.PI;
 const DEFAULT_SAFETY_MARGIN = 4;
 const EPSILON = 1e-7;
 const BEZIER_SAMPLING = Object.freeze({ tolerance: 4, maxSubdivisionDepth: 10 });
+const DISCOVERY_THRESHOLD_MULTIPLIER = 3;
+
+/**
+ * Compute the minimum distance between two sampled polylines using
+ * segment-to-segment distance (via intersectSegments + point-to-segment).
+ */
+const polylineMinSegmentDistance = (
+  polyA: readonly Vec2[],
+  polyB: readonly Vec2[],
+): number => {
+  if (polyA.length < 2 || polyB.length < 2) return Infinity;
+
+  let minDist = Infinity;
+
+  for (let ai = 0; ai < polyA.length - 1; ai += 1) {
+    const a0 = polyA[ai]!;
+    const a1 = polyA[ai + 1]!;
+    for (let bj = 0; bj < polyB.length - 1; bj += 1) {
+      const b0 = polyB[bj]!;
+      const b1 = polyB[bj + 1]!;
+
+      // Check for segment intersection first
+      const seg = intersectSegments(a0, a1, b0, b1, { epsilon: EPSILON });
+      if (seg.kind === "PROPER" || seg.kind === "COLLINEAR_OVERLAP") {
+        return 0; // intersecting -> distance is zero
+      }
+
+      // Point-to-segment distances
+      // Distance from a0 to segment b0-b1
+      const dA0 = pointToSegmentDistance(a0, b0, b1);
+      // Distance from a1 to segment b0-b1
+      const dA1 = pointToSegmentDistance(a1, b0, b1);
+      // Distance from b0 to segment a0-a1
+      const dB0 = pointToSegmentDistance(b0, a0, a1);
+      // Distance from b1 to segment a0-a1
+      const dB1 = pointToSegmentDistance(b1, a0, a1);
+
+      const candidates = [dA0, dA1, dB0, dB1];
+      for (const c of candidates) {
+        if (c < minDist) minDist = c;
+      }
+    }
+  }
+
+  return minDist;
+};
+
+/**
+ * Point-to-segment distance (clamped orthogonal projection).
+ */
+const pointToSegmentDistance = (p: Vec2, a: Vec2, b: Vec2): number => {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const denom = abx * abx + aby * aby;
+  if (denom <= EPSILON) return distance(p, a);
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / denom;
+  t = Math.max(0, Math.min(1, t));
+  const projX = a.x + abx * t;
+  const projY = a.y + aby * t;
+  return distance(p, { x: projX, y: projY });
+};
 
 /**
  * Builds a complete routing plan from an approved SkeletonPlan.
@@ -71,7 +134,7 @@ export class DeterministicRoutingPlanBuilder implements RoutingPlanBuilderContra
         if (tPoly) territoryPolygon = tPoly;
       }
 
-      // Discover obstacles using sampled Bezier AABB + narrow-phase distance
+      // Discover obstacles using full sampled-Bezier broad phase + segment-to-segment narrow phase
       const branchSamples = sampledCurves.get(branch.id) ?? [];
       const obstacleData = discoverObstacles(
         branch,
@@ -86,16 +149,21 @@ export class DeterministicRoutingPlanBuilder implements RoutingPlanBuilderContra
         "OBSTACLE_DISCOVERY",
         "OBSTACLES_FOUND",
         "INFO",
-        `Found ${obstacleData.ids.length} obstacles for branch ${branch.id}`,
+        `Found ${obstacleData.clearances.length} obstacles for branch ${branch.id}`,
         branch.id,
-        { obstacleCount: obstacleData.ids.length },
-        obstacleData.ids.slice(0, 10),
+        { obstacleCount: obstacleData.clearances.length },
+        obstacleData.clearances.map((c) => c.obstacleBranchId).slice(0, 10),
       );
 
-      // Pairwise clearance: compute clearance against each obstacle, take max
-      let pairwiseClearance = computeRequiredClearance(branchRadius, branchRadius, safetyMargin, safetyMargin);
-      if (obstacleData.maxClearance !== null && obstacleData.maxClearance > pairwiseClearance) {
-        pairwiseClearance = obstacleData.maxClearance;
+      // Build obstacle IDs list and clearance records
+      const obstacleBranchIds: SkeletonBranchId[] = obstacleData.clearances.map((c) => c.obstacleBranchId);
+
+      // requiredClearance = maximum pairwise required clearance across all obstacles
+      let requiredClearance = computeRequiredClearance(branchRadius, branchRadius, safetyMargin, safetyMargin);
+      for (const oc of obstacleData.clearances) {
+        if (oc.requiredClearance > requiredClearance) {
+          requiredClearance = oc.requiredClearance;
+        }
       }
 
       // Build corridor
@@ -107,7 +175,6 @@ export class DeterministicRoutingPlanBuilder implements RoutingPlanBuilderContra
         isMajorLineage,
       });
 
-      // If corridor is degenerate (empty), mark as BLOCKED
       const corridorValid = corridor.points.length >= 3 && polygonArea(corridor) > 0;
       const status = corridorValid
         ? (branch.childrenBranchIds.length === 0 ? "TERMINAL" as const : "ROUTABLE" as const)
@@ -146,12 +213,15 @@ export class DeterministicRoutingPlanBuilder implements RoutingPlanBuilderContra
         maximumBendAngle: DEFAULT_MAX_BEND_ANGLE,
         branchRadius,
         safetyMargin,
-        requiredClearance: pairwiseClearance,
+        requiredClearance,
         routingPriority: priorityMap.get(branch.id) ?? 999,
         corridorPolygon: Object.freeze({
           points: Object.freeze(corridor.points.map((p) => Object.freeze({ x: p.x, y: p.y }))),
         }),
-        obstacleBranchIds: Object.freeze([...obstacleData.ids]),
+        obstacleBranchIds: Object.freeze([...obstacleBranchIds]),
+        obstacleClearances: Object.freeze(obstacleData.clearances.map((c) =>
+          Object.freeze({ ...c }),
+        )),
         status,
         diagnostics: diagnostics.snapshot(),
       };
@@ -177,7 +247,7 @@ export class DeterministicRoutingPlanBuilder implements RoutingPlanBuilderContra
         routingPriority: r.routingPriority,
         branchRadius: r.branchRadius,
         requiredClearance: r.requiredClearance,
-        obstacleCount: r.obstacleBranchIds.length,
+        obstacleCount: r.obstacleClearances.length,
         corridorPointCount: r.corridorPolygon.points.length,
         status: r.status,
       })),
@@ -213,13 +283,15 @@ const computeDirection = (branch: SkeletonBranch) => {
 };
 
 interface ObstacleResult {
-  readonly ids: readonly SkeletonBranchId[];
-  readonly maxClearance: number | null;
+  readonly clearances: readonly ObstacleClearanceRecord[];
 }
 
 /**
  * Discover obstacles using full sampled-Bezier AABB (broad phase) and
- * narrow-phase pairwise distance checking.
+ * segment-to-segment minimum distance (narrow phase).
+ *
+ * An obstacle is added only after narrow-phase validation passes:
+ * the measured segment-to-segment distance must be <= discovery threshold.
  */
 const discoverObstacles = (
   branch: SkeletonBranch,
@@ -229,63 +301,68 @@ const discoverObstacles = (
   branchRadius: number,
   safetyMargin: number,
 ): ObstacleResult => {
-  // Broad-phase AABB from ALL sampled Bezier points (not just endpoints)
-  const allPts = branchSamples.length > 0 ? branchSamples : [branch.curve.p0, branch.curve.p1, branch.curve.p2, branch.curve.p3];
+  const allPts = branchSamples.length > 0 ? branchSamples
+    : [branch.curve.p0, branch.curve.p1, branch.curve.p2, branch.curve.p3];
+
+  // Broad-phase AABB from ALL sampled points, expanded using BOTH branches' radii
   const bMinX = Math.min(...allPts.map((p) => p.x));
   const bMinY = Math.min(...allPts.map((p) => p.y));
   const bMaxX = Math.max(...allPts.map((p) => p.x));
   const bMaxY = Math.max(...allPts.map((p) => p.y));
-  const clearance = branchRadius * 2 + safetyMargin * 2;
-  const expanded = clearance * 3;
 
-  const broadMinX = bMinX - expanded;
-  const broadMinY = bMinY - expanded;
-  const broadMaxX = bMaxX + expanded;
-  const broadMaxY = bMaxY + expanded;
-
-  const result: SkeletonBranchId[] = [];
-  let maxClearance: number | null = null;
+  const clearances: ObstacleClearanceRecord[] = [];
 
   for (const other of allBranches) {
     if (other.generation === 0) continue;
     if (other.id === branch.id) continue;
     if (branch.parentBranchId !== null && other.id === branch.parentBranchId) continue;
 
-    // Broad phase: AABB from ALL sampled points of the other branch
-    const otherSamples = sampledCurves.get(other.id) ?? [other.curve.p0, other.curve.p1, other.curve.p2, other.curve.p3];
+    const otherSamples = sampledCurves.get(other.id) ??
+      [other.curve.p0, other.curve.p1, other.curve.p2, other.curve.p3];
+
+    // Broad-phase AABB expanded using BOTH branches' radii and safety margins
+    const otherRadius = computeBranchRadius(other.genealogyDepth);
+    const expansion = (branchRadius + otherRadius + safetyMargin * 2) * DISCOVERY_THRESHOLD_MULTIPLIER;
+
     const oMinX = Math.min(...otherSamples.map((p) => p.x));
     const oMinY = Math.min(...otherSamples.map((p) => p.y));
     const oMaxX = Math.max(...otherSamples.map((p) => p.x));
     const oMaxY = Math.max(...otherSamples.map((p) => p.y));
 
-    if (broadMaxX < oMinX || oMaxX < broadMinX || broadMaxY < oMinY || oMaxY < broadMinY) {
+    if (
+      bMaxX + expansion < oMinX - expansion ||
+      oMaxX + expansion < bMinX - expansion ||
+      bMaxY + expansion < oMinY - expansion ||
+      oMaxY + expansion < bMinY - expansion
+    ) {
       continue;
     }
 
-    result.push(other.id);
-
-    // Narrow-phase: compute minimum distance between sampled curves
-    const branchPts = branchSamples.length > 0 ? branchSamples : [branch.curve.p0, branch.curve.p3];
+    // Narrow phase: segment-to-segment minimum distance
+    const branchPts = branchSamples.length > 0 ? branchSamples
+      : [branch.curve.p0, branch.curve.p3];
     const otherPts = otherSamples;
-    let minDist = Infinity;
-    for (let i = 0; i < branchPts.length; i += 1) {
-      const bp = branchPts[i]!;
-      for (let j = 0; j < otherPts.length; j += 1) {
-        const op = otherPts[j]!;
-        const d = distance(bp, op);
-        if (d < minDist) minDist = d;
-      }
-    }
 
-    // Pairwise clearance = radiusA + radiusB + safetyA + safetyB
-    const otherRadius = computeBranchRadius(other.genealogyDepth);
+    const minDist = polylineMinSegmentDistance(branchPts, otherPts);
+
+    // Pairwise required clearance
     const pairwise = computeRequiredClearance(branchRadius, otherRadius, safetyMargin, safetyMargin);
-    if (maxClearance === null || pairwise > maxClearance) {
-      maxClearance = pairwise;
-    }
+
+    // Discovery threshold: accept as obstacle only if distance <= pairwise * multiplier
+    const discoveryThreshold = pairwise * DISCOVERY_THRESHOLD_MULTIPLIER;
+    if (minDist > discoveryThreshold) continue;
+
+    clearances.push({
+      obstacleBranchId: other.id,
+      requiredClearance: pairwise,
+      sampledMinSegmentDistance: Math.round(minDist * 1000) / 1000,
+    });
   }
 
-  result.sort((left, right) => String(left).localeCompare(String(right)));
+  // Sort by obstacleBranchId for deterministic output
+  clearances.sort((left, right) =>
+    String(left.obstacleBranchId).localeCompare(String(right.obstacleBranchId)),
+  );
 
-  return { ids: result, maxClearance };
+  return { clearances: Object.freeze(clearances) };
 };

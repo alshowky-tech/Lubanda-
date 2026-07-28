@@ -1,5 +1,6 @@
 import { normalize, subtract } from "../geometry/vec2.js";
 import { clipPolygonByHalfPlane } from "../territory/polygon-geometry.js";
+import { signedPolygonArea, isConvexPolygon } from "../territory/polygon-geometry.js";
 import type { Polygon } from "../geometry/types.js";
 import type { SkeletonBranch } from "../skeleton/types.js";
 
@@ -12,6 +13,16 @@ export interface CorridorBuildInput {
 }
 
 /**
+ * Return a polygon with CCW winding. If the polygon is CW, reverse it.
+ */
+const ensureCCW = (polygon: Polygon): Polygon => {
+  if (signedPolygonArea(polygon) < 0) {
+    return { points: [...polygon.points].reverse() };
+  }
+  return polygon;
+};
+
+/**
  * Build a deterministic corridor polygon for a single branch.
  *
  * The corridor is a directional polygon that:
@@ -21,8 +32,9 @@ export interface CorridorBuildInput {
  * - has non-zero finite area;
  * - never modifies the original SkeletonBranch curve.
  *
- * When the corridor cannot be contained within the territory, the polygon
- * is returned with < 3 points, signalling a routing failure.
+ * When the corridor cannot be contained within the territory, or the
+ * territory is not convex, the polygon is returned with < 3 points,
+ * signalling a routing failure.
  */
 export const buildBranchCorridor = (input: CorridorBuildInput): Polygon => {
   const { branch, branchRadius, safetyMargin } = input;
@@ -70,7 +82,14 @@ export const buildBranchCorridor = (input: CorridorBuildInput): Polygon => {
 
   // Clip inside territory polygon using proper half-plane clipping
   if (input.territoryPolygon !== null && !input.isMajorLineage) {
-    const territory = input.territoryPolygon;
+    // Normalize territory winding to CCW for consistent half-plane normals
+    const territory = ensureCCW(input.territoryPolygon);
+
+    // Convexity check: reject unsupported concave territories explicitly
+    if (!isConvexPolygon(territory, epsilon)) {
+      return { points: [] }; // concave not supported
+    }
+
     for (let i = 0; i < territory.points.length; i += 1) {
       const start = territory.points[i]!;
       const end = territory.points[(i + 1) % territory.points.length]!;
