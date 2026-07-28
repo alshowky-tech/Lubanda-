@@ -32,4 +32,15 @@ export const MILESTONE_3_STAGES = [
 
 export type Milestone3Stage = (typeof MILESTONE_3_STAGES)[number];
 
-export type CoreStage = Milestone1Stage | Milestone2Stage | Milestone3Stage;
+export const MILESTONE_4_2_STAGES = [
+  "BUILD_COLLISION_INDEX",
+  "TEST_BRANCH_COLLISIONS",
+  "TEST_SELF_COLLISION",
+  "TEST_BOUNDARY_CONTAINMENT",
+  "RESOLVE_LOCAL_COLLISIONS",
+  "VALIDATE_COLLISION_SAFETY",
+] as const;
+
+export type Milestone42Stage = (typeof MILESTONE_4_2_STAGES)[number];
+
+export type CoreStage = Milestone1Stage | Milestone2Stage | Milestone3Stage | Milestone42Stage;

@@ -3,7 +3,13 @@
   "$id": "https://lubanda.local/schemas/error-codes.schema.json",
   "title": "Lubanda Engine Issue",
   "type": "object",
-  "required": ["code", "severity", "messageKey", "stage", "recoverable"],
+  "required": [
+    "code",
+    "severity",
+    "messageKey",
+    "stage",
+    "recoverable"
+  ],
   "properties": {
     "code": {
       "enum": [
@@ -47,11 +53,28 @@
         "SKELETON_MISSING_PERSON",
         "SKELETON_ORPHAN_BRANCH",
         "SKELETON_TERRITORY_MISS",
-        "SKELETON_TREE_INCOMPLETE"
+        "SKELETON_TREE_INCOMPLETE",
+        "COLLISION_BRANCH_BRANCH",
+        "COLLISION_BRANCH_BOUNDARY",
+        "COLLISION_SELF_INTERSECTION",
+        "COLLISION_CLEARANCE_DEFICIT",
+        "COLLISION_PENETRATION",
+        "COLLISION_RESOLUTION_FAILED",
+        "COLLISION_NON_DETERMINISTIC"
       ]
     },
-    "severity": { "enum": ["FATAL", "ERROR", "WARNING", "INFO"] },
-    "messageKey": { "type": "string", "minLength": 1 },
+    "severity": {
+      "enum": [
+        "FATAL",
+        "ERROR",
+        "WARNING",
+        "INFO"
+      ]
+    },
+    "messageKey": {
+      "type": "string",
+      "minLength": 1
+    },
     "stage": {
       "enum": [
         "ACQUIRE",
@@ -72,18 +95,35 @@
         "REJECT_CANDIDATES",
         "SCORE_CANDIDATES",
         "VALIDATE_SKELETON",
-        "FREEZE_SKELETON"
+        "FREEZE_SKELETON",
+        "BUILD_COLLISION_INDEX",
+        "TEST_BRANCH_COLLISIONS",
+        "TEST_SELF_COLLISION",
+        "TEST_BOUNDARY_CONTAINMENT",
+        "RESOLVE_LOCAL_COLLISIONS",
+        "VALIDATE_COLLISION_SAFETY"
       ]
     },
     "entityIds": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "uniqueItems": true
     },
-    "field": { "type": "string" },
-    "rowNumber": { "type": "integer", "minimum": 1 },
-    "details": { "type": "object" },
-    "recoverable": { "type": "boolean" }
+    "field": {
+      "type": "string"
+    },
+    "rowNumber": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "details": {
+      "type": "object"
+    },
+    "recoverable": {
+      "type": "boolean"
+    }
   },
   "additionalProperties": false
 }

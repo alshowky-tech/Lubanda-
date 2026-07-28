@@ -74,3 +74,36 @@ export const computeCorridorWidth = (
   }
   return branchRadius * 2 + safetyMargin * 2;
 };
+
+/**
+ * Compute the collision envelope radius for a single branch.
+ * This is the canonical per-branch formula shared by Routing and Collision.
+ *
+ * envelopeRadius = branchHalfWidth + barkAllowance + classClearance + numericalSafetyMargin
+ *
+ * Per LCS-GEO-004 and LCS-CON-004:
+ * - branchHalfWidth is the structural branch radius
+ * - barkAllowance accounts for bark thickness (from CollisionConfig.barkAllowance)
+ * - classClearance is the minimum gap for this element class (from CollisionConfig.branchClearance or labelClearance)
+ * - numericalSafetyMargin is a floating-point guard (defaults to the configured safetyMargin)
+ */
+export const computeEnvelopeRadius = (
+  branchHalfWidth: number,
+  barkAllowance = 0,
+  classClearance = 0,
+  numericalSafetyMargin = DEFAULT_SAFETY_MARGIN,
+): number => {
+  if (!Number.isFinite(branchHalfWidth) || branchHalfWidth < 0) {
+    throw new RangeError("branchHalfWidth must be a non-negative finite number");
+  }
+  if (!Number.isFinite(barkAllowance) || barkAllowance < 0) {
+    throw new RangeError("barkAllowance must be a non-negative finite number");
+  }
+  if (!Number.isFinite(classClearance) || classClearance < 0) {
+    throw new RangeError("classClearance must be a non-negative finite number");
+  }
+  if (!Number.isFinite(numericalSafetyMargin) || numericalSafetyMargin < 0) {
+    throw new RangeError("numericalSafetyMargin must be a non-negative finite number");
+  }
+  return branchHalfWidth + barkAllowance + classClearance + numericalSafetyMargin;
+};

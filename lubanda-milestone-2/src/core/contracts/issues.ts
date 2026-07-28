@@ -58,10 +58,24 @@ export const SKELETON_ISSUE_CODES = [
 ] as const;
 
 export type SkeletonIssueCode = (typeof SKELETON_ISSUE_CODES)[number];
+
+export const COLLISION_ISSUE_CODES = [
+  "COLLISION_BRANCH_BRANCH",
+  "COLLISION_BRANCH_BOUNDARY",
+  "COLLISION_SELF_INTERSECTION",
+  "COLLISION_CLEARANCE_DEFICIT",
+  "COLLISION_PENETRATION",
+  "COLLISION_RESOLUTION_FAILED",
+  "COLLISION_NON_DETERMINISTIC",
+] as const;
+
+export type CollisionIssueCode = (typeof COLLISION_ISSUE_CODES)[number];
+
 export const ENGINE_ISSUE_CODES = [
   ...DATA_ISSUE_CODES,
   ...TERRITORY_ISSUE_CODES,
   ...SKELETON_ISSUE_CODES,
+  ...COLLISION_ISSUE_CODES,
 ] as const;
 export type EngineIssueCode = (typeof ENGINE_ISSUE_CODES)[number];
 
