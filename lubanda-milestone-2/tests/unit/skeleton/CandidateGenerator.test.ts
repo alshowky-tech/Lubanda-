@@ -40,8 +40,8 @@ const makeInput = (overrides: Partial<CandidateGenerationInput> = {}): Candidate
   config: DEFAULT_ENGINE_CONFIGURATION.skeleton,
   seed: 42,
   existingBranchBounds: [],
-  existingCurveSamples: [],
-  skipParentBounds: false,
+  existingBranchCurves: [],
+  excludeParentBranchId: null,
   relaxedTerritoryCheck: false,
   candidateCount: 12,
   genealogyDepth: 1,
@@ -149,7 +149,7 @@ describe("CandidateGenerator", () => {
     ];
     const candidates = generateBranchCandidates(
       makeInput({
-        existingCurveSamples: [overlappingPolyline],
+        existingBranchCurves: [{branchId: "existing-1", samples: overlappingPolyline}],
         existingBranchBounds: [{
           minX: 200, minY: 0,
           maxX: 500, maxY: 50,
@@ -172,7 +172,7 @@ describe("CandidateGenerator", () => {
     ];
     const candidates = generateBranchCandidates(
       makeInput({
-        existingCurveSamples: [intersectingPolyline],
+        existingBranchCurves: [{branchId: "existing-1", samples: intersectingPolyline}],
         existingBranchBounds: [{ minX: 450, minY: 50, maxX: 500, maxY: 350 }],
       }),
     );

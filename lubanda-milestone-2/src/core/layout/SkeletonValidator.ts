@@ -18,49 +18,36 @@ const issue = (
   stage: string,
   messageKey: string,
   entityIds: readonly string[] = [],
-  details: Readonly<Record<string, unknown>> = {},
+  details?: Readonly<Record<string, unknown>>,
 ): EngineIssue => ({
   code,
-  severity: "ERROR",
+  severity: "ERROR" as const,
   messageKey,
   stage,
   ...(entityIds.length === 0 ? {} : { entityIds }),
-  details,
+  ...(details ? { details } : {}),
   recoverable: true,
 }) as unknown as EngineIssue;
 
 const BEZIER_SAMPLING = Object.freeze({ tolerance: 2, maxSubdivisionDepth: 10 });
 const EPSILON = 1e-7;
 
-/** Validate that every sampled point of the curve is inside the polygon. */
 const allPointsInside = (samples: readonly Vec2[], poly: Polygon): boolean =>
   samples.every((p) => classifyPointInPolygon(p, poly) !== "OUTSIDE");
 
-/** For relaxed (major lineage entry): find first entry, then no re-exit. */
 const entryThenStayInside = (samples: readonly Vec2[], poly: Polygon): boolean => {
   if (samples.length === 0) return false;
   let entryIndex = -1;
   for (let i = 0; i < samples.length; i += 1) {
-    if (classifyPointInPolygon(samples[i]!, poly) !== "OUTSIDE") {
-      entryIndex = i;
-      break;
-    }
+    if (classifyPointInPolygon(samples[i]!, poly) !== "OUTSIDE") { entryIndex = i; break; }
   }
-  if (entryIndex < 0) {
-    return classifyPointInPolygon(samples[samples.length - 1]!, poly) !== "OUTSIDE";
-  }
+  if (entryIndex < 0) return classifyPointInPolygon(samples[samples.length - 1]!, poly) !== "OUTSIDE";
   for (let i = entryIndex; i < samples.length; i += 1) {
     if (classifyPointInPolygon(samples[i]!, poly) === "OUTSIDE") return false;
   }
   return true;
 };
 
-/**
- * Validates a grown skeleton plan against structural, geometric, and
- * genealogical correctness constraints using sampled Bezier curves
- * for all geometric checks. Intentional shared endpoints (parent/child
- * junctions) are excluded from intersection detection.
- */
 export class SkeletonValidator {
   validate(
     plan: SkeletonPlan,
@@ -79,9 +66,8 @@ export class SkeletonValidator {
     let outOfBoundsCount = 0;
     let intersectionCount = 0;
 
-    // Build set of connected branch pairs
-    const connectedPairs = new Set<string>();
     const pairKey = (l: string, r: string): string => l < r ? `${l}|${r}` : `${r}|${l}`;
+    const connectedPairs = new Set<string>();
     for (const branch of plan.branches) {
       if (branch.parentBranchId !== null) connectedPairs.add(pairKey(branch.id, branch.parentBranchId));
       for (const childId of branch.childrenBranchIds) connectedPairs.add(pairKey(branch.id, childId));
@@ -92,13 +78,12 @@ export class SkeletonValidator {
       }
     }
 
-    // Pre-sample all branch curves
     const sampledCurves = new Map<SkeletonBranchId, readonly Vec2[]>();
     for (const branch of plan.branches) {
       sampledCurves.set(branch.id, sampleCubicBezier(branch.curve, BEZIER_SAMPLING));
     }
 
-    // 1. Check that all persons in the subtree have a branch
+    // ── 1. Person coverage ──
     const subtree = graph.getSubtree(selectedRootId);
     const personsWithBranches = new Set(plan.branches.map((b) => b.ownerPersonId));
     for (const personId of subtree) {
@@ -108,97 +93,51 @@ export class SkeletonValidator {
       }
     }
 
-    // 2. Check each branch for structural integrity and geometry
+    // ── 2. Structural checks per branch ──
     const branchBoundsList: Bounds[] = [];
     for (const branch of plan.branches) {
-      // Parent chain
       if (branch.parentBranchId !== null) {
         const parent = branchMap.get(branch.parentBranchId);
         if (!parent) {
           orphanBranchCount += 1;
           issues.push(issue("SKELETON_ORPHAN_BRANCH", "VALIDATE_SKELETON", "skeleton.orphanBranch", [branch.id]));
-        } else {
-          // 💥 Verify parent's childrenBranchIds contains this child
-          if (!parent.childrenBranchIds.includes(branch.id)) {
-            invalidBranchCount += 1;
-            issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-              reason: "parent childrenBranchIds does not include child",
-            }));
-          }
+        } else if (!parent.childrenBranchIds.includes(branch.id)) {
+          invalidBranchCount += 1;
+          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
+            reason: "parent childrenBranchIds does not include child",
+          }));
         }
       }
 
-      // Start node
       const startNode = nodeMap.get(branch.startNodeId);
       if (!startNode) {
         invalidBranchCount += 1;
-        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-          reason: "startNodeId not found",
-        }));
-      } else {
-        if (distance(branch.startPoint, startNode.point) > EPSILON) {
-          invalidBranchCount += 1;
-          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-            reason: "startPoint does not match startNode point",
-          }));
-        }
-        // 💥 For non-trunk, non-root branches: verify startNode.incomingBranchId
-        if (branch.generation > 0 && branch.parentBranchId !== null) {
-          if (startNode.incomingBranchId !== branch.parentBranchId &&
-              startNode.incomingBranchId !== null) {
-            // This is a soft check: the split node's incomingBranchId should reference the parent
-            // But the parent end node won't have incomingBranchId set to the parent
-            // So only flag if it's a BRANCH_SPLIT node with wrong incomingBranchId
-          }
-        }
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], { reason: "startNodeId not found" }));
+      } else if (distance(branch.startPoint, startNode.point) > EPSILON) {
+        invalidBranchCount += 1;
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], { reason: "startPoint does not match startNode point" }));
       }
 
-      // End node
       const endNode = nodeMap.get(branch.endNodeId);
       if (!endNode) {
         invalidBranchCount += 1;
-        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-          reason: "endNodeId not found",
-        }));
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], { reason: "endNodeId not found" }));
       } else if (distance(branch.endPoint, endNode.point) > EPSILON) {
         invalidBranchCount += 1;
-        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-          reason: "endPoint does not match endNode point",
-        }));
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], { reason: "endPoint does not match endNode point" }));
       }
 
-      // 💥 BRANCH_SPLIT node topology: incomingBranchId should match parent
-      if (endNode && endNode.kind === "BRANCH_SPLIT" && endNode.incomingBranchId !== null) {
-        if (endNode.incomingBranchId !== branch.id) {
-          invalidBranchCount += 1;
-          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id, endNode.id], {
-            reason: "splitNode.incomingBranchId does not match the branch ending at this node",
-          }));
-        }
-        // 💥 outgoingBranchIds should contain children
-        for (const childId of branch.childrenBranchIds) {
-          if (!endNode.outgoingBranchIds.includes(childId)) {
-            invalidBranchCount += 1;
-            issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id, childId], {
-              reason: "splitNode.outgoingBranchIds missing child branch",
-            }));
-          }
-        }
-      }
-
-      // Template containment on sampled curve
+      // Template containment
       const curveSamples = sampledCurves.get(branch.id) ?? [];
       if (!allPointsInside(curveSamples, templatePolygon)) {
         outOfBoundsCount += 1;
         issues.push(issue("SKELETON_BRANCH_OUT_OF_BOUNDS", "VALIDATE_SKELETON", "skeleton.branchOutOfBounds", [branch.id]));
       }
 
-      // 💥 Territory containment: every sampled point must be inside
+      // Territory containment
       if (branch.territoryId !== null) {
         const assignedPoly = territoryPolygons.get(branch.territoryId);
         if (assignedPoly) {
-          // Determine if this is a major lineage branch (generation 1 starting from trunk)
-          // These may enter from outside at the corridor boundary
           const isMajorLineage = branch.generation === 1 && branch.parentBranchId === null;
           const territoryOk = isMajorLineage
             ? entryThenStayInside(curveSamples, assignedPoly)
@@ -221,97 +160,159 @@ export class SkeletonValidator {
       });
     }
 
-    // 3. Check for branch intersections using sampled Bezier narrow phase
+    // ── 3. BRANCH_SPLIT validation (Defects 2 & 3) ──
+    for (const node of plan.nodes) {
+      if (node.kind !== "BRANCH_SPLIT") continue;
+
+      // 💥 Defect 3: null incomingBranchId is always rejected
+      if (node.incomingBranchId === null) {
+        invalidBranchCount += 1;
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [node.id], {
+          reason: "BRANCH_SPLIT has null incomingBranchId",
+        }));
+        continue;
+      }
+
+      const incomingBranch = branchMap.get(node.incomingBranchId);
+      if (!incomingBranch) {
+        invalidBranchCount += 1;
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [node.id], {
+          reason: "BRANCH_SPLIT incomingBranchId references nonexistent branch",
+        }));
+        continue;
+      }
+
+      // Validate the split node point lies on the incoming branch's Bezier curve
+      const parentSamples = sampledCurves.get(incomingBranch.id) ?? [];
+      if (parentSamples.length > 0) {
+        let minDistToCurve = Infinity;
+        for (const sp of parentSamples) {
+          minDistToCurve = Math.min(minDistToCurve, distance(node.point, sp));
+        }
+        if (minDistToCurve > 5.0) {
+          invalidBranchCount += 1;
+          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [node.id, incomingBranch.id], {
+            reason: "BRANCH_SPLIT point does not lie on incoming branch Bezier",
+          }));
+        }
+      }
+
+      // Validate outgoing children exist
+      if (node.outgoingBranchIds.length === 0) {
+        invalidBranchCount += 1;
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [node.id], {
+          reason: "BRANCH_SPLIT has zero outgoing children",
+        }));
+      }
+
+      // Validate each outgoing child exists and starts at this node
+      for (const childId of node.outgoingBranchIds) {
+        const child = branchMap.get(childId);
+        if (!child) {
+          invalidBranchCount += 1;
+          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [node.id], {
+            reason: "BRANCH_SPLIT outgoingBranchIds references nonexistent child",
+          }));
+        } else {
+          if (child.startNodeId !== node.id) {
+            invalidBranchCount += 1;
+            issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [childId, node.id], {
+              reason: "child branch startNodeId does not match split node id",
+            }));
+          }
+          if (child.parentBranchId !== incomingBranch?.id) {
+            invalidBranchCount += 1;
+            issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [childId], {
+              reason: "child parentBranchId does not match split node incomingBranchId",
+            }));
+          }
+        }
+      }
+    }
+
+    // ── 4. Non-root branch start node lies on parent curve ──
+    for (const branch of plan.branches) {
+      if (branch.parentBranchId === null) continue;
+      const parent = branchMap.get(branch.parentBranchId);
+      if (!parent) continue;
+      const startNode = nodeMap.get(branch.startNodeId);
+      if (!startNode) continue;
+
+      // Skip if startNode is the parent's end node (single child, intentional connection)
+      if (startNode.id === parent.endNodeId) continue;
+
+      // This is an interior split; verify start point lies on parent Bezier
+      const parentSamples = sampledCurves.get(parent.id) ?? [];
+      if (parentSamples.length > 0) {
+        let minDist = Infinity;
+        for (const sp of parentSamples) {
+          minDist = Math.min(minDist, distance(branch.startPoint, sp));
+        }
+        if (minDist > 5.0) {
+          invalidBranchCount += 1;
+          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
+            reason: "child branch startPoint does not lie on parent Bezier curve",
+          }));
+        }
+      }
+    }
+
+    // ── 5. Intersection check ──
     const branchesArray = plan.branches;
     for (let left = 0; left < branchesArray.length; left += 1) {
       const leftBranch = branchesArray[left]!;
       const leftSamples = sampledCurves.get(leftBranch.id) ?? [];
       const leftB = branchBoundsList[left]!;
-
       for (let right = left + 1; right < branchesArray.length; right += 1) {
         const rightBranch = branchesArray[right]!;
         const rightSamples = sampledCurves.get(rightBranch.id) ?? [];
         const rightB = branchBoundsList[right]!;
-
-        // Broad phase
         if (!boundsOverlap(leftB, rightB, 4)) continue;
-        // Skip connected pairs
         if (connectedPairs.has(pairKey(leftBranch.id, rightBranch.id))) continue;
-
-        // Narrow phase: segment intersections on sampled polylines
-        let foundIntersection = false;
-        for (let li = 0; li < leftSamples.length - 1 && !foundIntersection; li += 1) {
+        let found = false;
+        for (let li = 0; li < leftSamples.length - 1 && !found; li += 1) {
           const la = leftSamples[li]!;
           const lb = leftSamples[li + 1]!;
-          for (let ri = 0; ri < rightSamples.length - 1 && !foundIntersection; ri += 1) {
+          for (let ri = 0; ri < rightSamples.length - 1 && !found; ri += 1) {
             const ra = rightSamples[ri]!;
             const rb = rightSamples[ri + 1]!;
             const segResult = intersectSegments(la, lb, ra, rb, { epsilon: EPSILON });
-            if (segResult.kind === "PROPER" || segResult.kind === "COLLINEAR_OVERLAP") {
-              foundIntersection = true;
-            }
+            if (segResult.kind === "PROPER" || segResult.kind === "COLLINEAR_OVERLAP") found = true;
           }
         }
-        if (foundIntersection) {
+        if (found) {
           intersectionCount += 1;
-          issues.push(issue("SKELETON_BRANCH_INTERSECTION", "VALIDATE_SKELETON", "skeleton.branchIntersection", [
-            leftBranch.id, rightBranch.id,
-          ]));
+          issues.push(issue("SKELETON_BRANCH_INTERSECTION", "VALIDATE_SKELETON", "skeleton.branchIntersection", [leftBranch.id, rightBranch.id]));
         }
       }
     }
 
-    // 4. Trunk completeness
+    // ── 6. Trunk checks ──
     for (const trunkBranchId of plan.trunk.segments) {
       if (!branchMap.has(trunkBranchId)) {
         issues.push(issue("SKELETON_TRUNK_INVALID", "VALIDATE_SKELETON", "skeleton.trunkInvalid", [trunkBranchId]));
       }
     }
     if (!nodeMap.has(plan.trunk.baseNodeId)) {
-      issues.push(issue("SKELETON_TRUNK_INVALID", "VALIDATE_SKELETON", "skeleton.trunkInvalid", [], {
-        reason: "baseNodeId not found",
-      }));
+      issues.push(issue("SKELETON_TRUNK_INVALID", "VALIDATE_SKELETON", "skeleton.trunkInvalid", [], { reason: "baseNodeId not found" }));
     }
 
-    // 5. Topology consistency in both directions
+    // ── 7. Bidirectional topology ──
     for (const branch of plan.branches) {
       for (const childId of branch.childrenBranchIds) {
         const child = branchMap.get(childId);
         if (!child) {
           invalidBranchCount += 1;
-          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-            reason: "childrenBranchIds references nonexistent branch",
-          }));
+          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], { reason: "childrenBranchIds references nonexistent branch" }));
         } else if (child.parentBranchId !== branch.id) {
           invalidBranchCount += 1;
-          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id, childId], {
-            reason: "child.parentBranchId does not match parent",
-          }));
+          issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id, childId], { reason: "child.parentBranchId does not match parent" }));
         }
       }
-    }
-
-    // 6. Check for duplicate child references
-    for (const branch of plan.branches) {
       const uniqueChildren = new Set(branch.childrenBranchIds);
       if (uniqueChildren.size !== branch.childrenBranchIds.length) {
         invalidBranchCount += 1;
-        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], {
-          reason: "duplicate child reference in childrenBranchIds",
-        }));
-      }
-    }
-
-    // 7. For non-trunk branches, check start node lies on parent curve
-    for (const branch of plan.branches) {
-      if (branch.parentBranchId !== null) {
-        const parent = branchMap.get(branch.parentBranchId);
-        if (parent) {
-          const startNodeCheck = nodeMap.get(branch.startNodeId);
-          if (startNodeCheck && startNodeCheck.point !== branch.startPoint) {
-            // Already checked above via distance - this is fine
-          }
-        }
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [branch.id], { reason: "duplicate child reference" }));
       }
     }
 
@@ -329,15 +330,9 @@ export class SkeletonValidator {
       totalCurveLength: plan.branches.reduce((sum, b) => sum + b.length, 0),
       maxDepth: plan.metadata.maximumGenealogyDepth,
       acceptedPersonCount: plan.branches.length,
-      connectedPersonCount: plan.branches.filter(
-        (b) => b.parentBranchId !== null || b.generation === 0,
-      ).length,
+      connectedPersonCount: plan.branches.filter((b) => b.parentBranchId !== null || b.generation === 0).length,
     };
 
-    return {
-      accepted: issues.length === 0,
-      issues: Object.freeze(issues),
-      metrics,
-    };
+    return { accepted: issues.length === 0, issues: Object.freeze(issues), metrics };
   }
 }

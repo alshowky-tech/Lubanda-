@@ -10,6 +10,7 @@ import type {
   BranchRejectionReason,
   CandidateGenerationInput,
   AttractorField,
+  CurveRecord,
 } from "./types.js";
 
 // ── Internal helpers ──────────────────────────────────────────────────
@@ -55,20 +56,25 @@ const computeMaxCurvature = (curve: CubicBezier): number => {
 // ── Real narrow-phase intersection check ──────────────────────────────
 // AABB is broad phase only. For overlapping bounds, tests sampled Bezier
 // polyline segments using deterministic segment intersection.
+// The parent branch (by exact branchId) is excluded to allow intentional
+// parent-child connection at the shared endpoint.
 
 const curveCurveIntersect = (
   candidateCurve: CubicBezier,
-  existingSamples: readonly (readonly Vec2[])[],
-  skipParent: boolean,
+  existingCurves: readonly CurveRecord[],
+  excludeParentId: string | null,
 ): boolean => {
-  if (existingSamples.length === 0) return false;
+  if (existingCurves.length === 0) return false;
   const candidateSamples = sampleCubicBezier(candidateCurve, BEZIER_SAMPLING);
   if (candidateSamples.length < 2) return false;
 
-  // When skipParent is true, exclude the last entry (immediate parent)
-  const limit = skipParent ? existingSamples.length - 1 : existingSamples.length;
-  for (let e = 0; e < limit; e += 1) {
-    const existing = existingSamples[e]!;
+  for (let e = 0; e < existingCurves.length; e += 1) {
+    const record = existingCurves[e]!;
+
+    // 💥 Defect 4 FIX: Exclude only the exact parent branch by branchId
+    if (excludeParentId !== null && record.branchId === excludeParentId) continue;
+
+    const existing = record.samples;
     if (existing.length < 2) continue;
 
     // Broad phase: AABB
@@ -231,7 +237,8 @@ export const generateBranchCandidates = (
       }
     }
     // 💥 Real narrow-phase collision: segment intersection on sampled curves
-    if (curveCurveIntersect(curve, input.existingCurveSamples, input.skipParentBounds)) {
+    // Exclude only the exact parent branch (by branchId) to allow intentional connection
+    if (curveCurveIntersect(curve, input.existingBranchCurves, input.excludeParentBranchId)) {
       rejectionReasons.push("BRANCH_INTERSECTION");
     }
 

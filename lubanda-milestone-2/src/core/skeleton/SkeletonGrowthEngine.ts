@@ -33,6 +33,7 @@ import type {
   CandidateGenerationInput,
   CandidateRejectionRecord,
   BranchRejectionReason,
+  CurveRecord,
 } from "./types.js";
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -140,7 +141,7 @@ export class DeterministicSkeletonGrowthEngine
     const nodes = new Map<string, SkeletonNode>();
     const branches = new Map<string, SkeletonBranch>();
     const allBranchBounds: Bounds[] = [];
-    const allCurveSamples: Vec2[][] = [];
+    const allBranchCurves: CurveRecord[] = [];
     const mappedJunctions: MappedJunction[] = [];
     let totalInvalidCandidates = 0;
     let totalRejectedCandidates = 0;
@@ -246,7 +247,7 @@ export class DeterministicSkeletonGrowthEngine
       };
       branches.set(trunkBranchId, trunkBranch);
       trunkSegmentIds.push(trunkBranchId);
-      allCurveSamples.push([...sampleCubicBezier(trunkSegmentCurve, { tolerance: 4, maxSubdivisionDepth: 10 })]);
+      allBranchCurves.push({branchId: trunkBranchId, samples: sampleCubicBezier(trunkSegmentCurve, { tolerance: 4, maxSubdivisionDepth: 10 })});
 
       const prevNode = nodes.get(previousTrunkNodeId)!;
       nodes.set(previousTrunkNodeId, {
@@ -337,7 +338,7 @@ export class DeterministicSkeletonGrowthEngine
       };
       branches.set(finalBranchId, finalBranch);
       trunkSegmentIds.push(finalBranchId);
-      allCurveSamples.push([...sampleCubicBezier(finalCurve, { tolerance: 4, maxSubdivisionDepth: 10 })]);
+      allBranchCurves.push({branchId: finalBranchId, samples: sampleCubicBezier(finalCurve, { tolerance: 4, maxSubdivisionDepth: 10 })});
 
       const prevNode = nodes.get(previousTrunkNodeId)!;
       nodes.set(previousTrunkNodeId, {
@@ -397,7 +398,6 @@ export class DeterministicSkeletonGrowthEngine
       genealogyDepth: number,
       skeletonDepth: number,
       existingBounds: Bounds[],
-      excludeBoundsCount = 0,
     ): { branch: SkeletonBranch | null; endNodeId: string | null } => {
       const person = input.graph.personsById.get(personId);
       if (!person) return { branch: null, endNodeId: null };
@@ -461,8 +461,8 @@ export class DeterministicSkeletonGrowthEngine
         config: input.configuration,
         seed: input.seed + skeletonDepth * 13 + branches.size * 7,
         existingBranchBounds: existingBounds,
-        existingCurveSamples: allCurveSamples,
-        skipParentBounds: excludeBoundsCount > 0,
+        existingBranchCurves: allBranchCurves,
+        excludeParentBranchId: parentBranchId,
         relaxedTerritoryCheck: relaxedTerritory,
         candidateCount: input.configuration.candidateCount,
         genealogyDepth,
@@ -525,14 +525,12 @@ export class DeterministicSkeletonGrowthEngine
       };
       nodes.set(branchEndNodeId, endNode);
 
-      // If parentBranchId is null, this is a major lineage branch starting at a trunk junction.
-      // Use startNodeId directly (caller provides the exact trunk junction node).
-      // Otherwise, look up the parent branch's end node.
-      const effectiveStartNodeId =
-        parentBranchId === null ? startNodeId : (() => {
-          const parentBr = branches.get(parentBranchId);
-          return parentBr?.endNodeId ?? startNodeId;
-        })();
+      // 💥 Defect 1 FIX: Use the exact startNodeId provided by the caller.
+      // For major lineage branches (parentBranchId === null), the caller
+      // provides the trunk junction node. For children, the caller provides
+      // either a BRANCH_SPLIT node or the parent's end node.
+      // We NEVER override this with parentBr.endNodeId.
+      const usedStartNodeId = startNodeId;
 
       const branch: SkeletonBranch = {
         id: branchId,
@@ -552,7 +550,7 @@ export class DeterministicSkeletonGrowthEngine
           false,
           genealogyDepth,
         ),
-        startNodeId: effectiveStartNodeId,
+        startNodeId: usedStartNodeId,
         endNodeId: branchEndNodeId,
         childrenBranchIds: [],
         candidateScore: selected.score ?? null,
@@ -565,7 +563,7 @@ export class DeterministicSkeletonGrowthEngine
       };
       branches.set(branchId, branch);
       allBranchBounds.push(...branchBounds(branch));
-      allCurveSamples.push([...sampleCubicBezier(branchCurve, { tolerance: 4, maxSubdivisionDepth: 10 })]);
+      allBranchCurves.push({branchId: branchId, samples: sampleCubicBezier(branchCurve, { tolerance: 4, maxSubdivisionDepth: 10 })});
 
       addDiagnostic(
         "RECURSIVE_GROWTH",
@@ -622,8 +620,6 @@ export class DeterministicSkeletonGrowthEngine
           childStartNodeId = branchEndNodeId;
         }
 
-        // For children, skip parent chain bounds from intersection check
-        const parentExclude = 1;  // skip parent -> skipParentBounds = true
         const result = growBranchRecursive(
           childId,
           branchId,
@@ -633,7 +629,6 @@ export class DeterministicSkeletonGrowthEngine
           genealogyDepth + 1,
           skeletonDepth + 1,
           allBranchBounds,
-          parentExclude,
         );
         if (result.branch) {
           childBranchIds.push(result.branch.id);
@@ -649,10 +644,10 @@ export class DeterministicSkeletonGrowthEngine
         });
       }
 
-      // Update parent node connections
-      const parentNode = nodes.get(effectiveStartNodeId);
+      // Update parent node connections — use usedStartNodeId (the actual start node)
+      const parentNode = nodes.get(usedStartNodeId);
       if (parentNode) {
-        nodes.set(effectiveStartNodeId, {
+        nodes.set(usedStartNodeId, {
           ...parentNode,
           outgoingBranchIds: Object.freeze([
             ...parentNode.outgoingBranchIds,
