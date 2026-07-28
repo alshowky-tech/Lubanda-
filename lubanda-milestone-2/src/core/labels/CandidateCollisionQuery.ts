@@ -8,9 +8,6 @@ import type { CandidateCollisionQuery, LabelPlacement } from "./types.js";
 
 const EPSILON = 1e-7;
 
-/**
- * Read-only CandidateCollisionQuery wrapping a CollisionIndex.
- */
 export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
   readonly #index: CollisionIndex;
   readonly #templatePolygon: Polygon;
@@ -25,61 +22,78 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
     bounds: Bounds,
     anchor: Vec2,
     anchorRadius: number,
-  ): boolean {
+  ): boolean { /* unchanged — preserve previous logic */
     const candidates = this.#index.query(bounds);
     for (const entry of candidates) {
       if (!boundsOverlap(entry.envelopeBounds, bounds)) continue;
-
       if (entry.branchId === candidateBranchId) {
-        // Self-anchor exemption: sample the INTERSECTION of candidate AABB
-        // and branch envelope AABB. Only if ALL sampled points of the
-        // intersecting region are inside the anchor circle, exempt.
-        const overlapMinX = Math.max(bounds.minX, entry.envelopeBounds.minX);
-        const overlapMinY = Math.max(bounds.minY, entry.envelopeBounds.minY);
-        const overlapMaxX = Math.min(bounds.maxX, entry.envelopeBounds.maxX);
-        const overlapMaxY = Math.min(bounds.maxY, entry.envelopeBounds.maxY);
-
-        // Uniform grid sampling of the overlap rectangle (3×3 = 9 points)
-        // This is deterministic and adequately dense for AABB-overlap testing.
-        const xSamples = 3;
-        const ySamples = 3;
+        const ox = Math.max(bounds.minX, entry.envelopeBounds.minX);
+        const oy = Math.max(bounds.minY, entry.envelopeBounds.minY);
+        const ox2 = Math.min(bounds.maxX, entry.envelopeBounds.maxX);
+        const oy2 = Math.min(bounds.maxY, entry.envelopeBounds.maxY);
         let allInside = true;
-        for (let xi = 0; xi < xSamples; xi += 1) {
-          const px = overlapMinX + (overlapMaxX - overlapMinX) * (xi / (xSamples - 1));
-          for (let yi = 0; yi < ySamples; yi += 1) {
-            const py = overlapMinY + (overlapMaxY - overlapMinY) * (yi / (ySamples - 1));
-            if (distance({ x: px, y: py }, anchor) > anchorRadius + EPSILON) {
-              allInside = false;
-            }
+        for (let xi = 0; xi < 3; xi += 1) {
+          for (let yi = 0; yi < 3; yi += 1) {
+            const px = ox + (ox2 - ox) * (xi / 2);
+            const py = oy + (oy2 - oy) * (yi / 2);
+            if (distance({ x: px, y: py }, anchor) > anchorRadius + EPSILON) allInside = false;
           }
         }
-        if (allInside) continue; // exempted — the entire overlap is within the attachment zone
-        // Otherwise the overlap extends outside the anchor circle → real collision
+        if (allInside) continue;
       }
-
       return true;
     }
     return false;
   }
 
-  overlapsFixedLabel(
-    bounds: Bounds,
-    fixedPlacements: readonly LabelPlacement[],
-  ): boolean {
+  overlapsFixedLabel(bounds: Bounds, fixedPlacements: readonly LabelPlacement[]): boolean {
     for (const fp of fixedPlacements) {
       if (boundsOverlap(bounds, fp.bounds)) return true;
     }
     return false;
   }
 
+  /**
+   * Concave-safe AABB boundary test: checks both corner containment AND
+   * that no AABB edge crosses any polygon boundary edge. This prevents
+   * false positives where all corners are inside but the AABB bridges
+   * across a concave notch.
+   */
   isBoundsInsideBoundary(bounds: Bounds): boolean {
+    const pts = this.#templatePolygon.points;
+    if (pts.length < 3) return false;
+
+    // Check all four corners
     const corners: Vec2[] = [
       { x: bounds.minX, y: bounds.minY },
       { x: bounds.maxX, y: bounds.minY },
       { x: bounds.maxX, y: bounds.maxY },
       { x: bounds.minX, y: bounds.maxY },
     ];
-    return corners.every((c) => this.isPointInsideBoundary(c));
+    for (const c of corners) {
+      if (!this.isPointInsideBoundary(c)) return false;
+    }
+
+    // Check each AABB edge against each polygon edge for crossings
+    const aabbEdges: readonly [Vec2, Vec2][] = [
+      [corners[0]!, corners[1]!],
+      [corners[1]!, corners[2]!],
+      [corners[2]!, corners[3]!],
+      [corners[3]!, corners[0]!],
+    ];
+
+    for (const [ae0, ae1] of aabbEdges) {
+      for (let pi = 0; pi < pts.length; pi += 1) {
+        const pp0 = pts[pi]!;
+        const pp1 = pts[(pi + 1) % pts.length]!;
+        const seg = intersectSegments(ae0, ae1, pp0, pp1, { epsilon: EPSILON });
+        // PROPER and COLLINEAR_OVERLAP indicate the edge crosses the boundary
+        if (seg.kind === "PROPER" || seg.kind === "COLLINEAR_OVERLAP") return false;
+        // ENDPOINT_TOUCH and COLLINEAR_TOUCH are allowed (exactly on boundary)
+      }
+    }
+
+    return true;
   }
 
   isPointInsideBoundary(point: Vec2): boolean {
@@ -124,8 +138,57 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
   }
 
   boundaryClearance(point: Vec2): number {
+    return this.#edgeDistance(point, this.#templatePolygon.points);
+  }
+
+  /**
+   * Minimum distance between ANY candidate AABB edge and ANY polygon
+   * boundary edge. Returns 0 if any pair intersects/crosses.
+   */
+  minBoundsBoundaryClearance(bounds: Bounds): number {
     const pts = this.#templatePolygon.points;
     if (pts.length < 3) return 0;
+
+    const corners: Vec2[] = [
+      { x: bounds.minX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.maxY },
+      { x: bounds.minX, y: bounds.maxY },
+    ];
+
+    const aabbEdges: readonly [Vec2, Vec2][] = [
+      [corners[0]!, corners[1]!],
+      [corners[1]!, corners[2]!],
+      [corners[2]!, corners[3]!],
+      [corners[3]!, corners[0]!],
+    ];
+
+    let minClear = Infinity;
+
+    // Check each AABB edge against each polygon boundary edge
+    for (const [ae0, ae1] of aabbEdges) {
+      for (let pi = 0; pi < pts.length; pi += 1) {
+        const pp0 = pts[pi]!;
+        const pp1 = pts[(pi + 1) % pts.length]!;
+        // Crossing → clearance is zero
+        const seg = intersectSegments(ae0, ae1, pp0, pp1, { epsilon: EPSILON });
+        if (seg.kind === "PROPER" || seg.kind === "COLLINEAR_OVERLAP") return 0;
+        // Segment-to-segment min distance
+        const d = this.#segmentSegmentDistance(ae0, ae1, pp0, pp1);
+        if (d < minClear) minClear = d;
+      }
+    }
+
+    // Also check corner-to-edge distances
+    for (const corner of corners) {
+      const d = this.#edgeDistance(corner, pts);
+      if (d < minClear) minClear = d;
+    }
+
+    return minClear;
+  }
+
+  #edgeDistance(point: Vec2, pts: readonly Vec2[]): number {
     let minDist = Infinity;
     for (let i = 0; i < pts.length; i += 1) {
       const a = pts[i]!, b = pts[(i + 1) % pts.length]!;
@@ -135,18 +198,12 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
     return minDist;
   }
 
-  minBoundsBoundaryClearance(bounds: Bounds): number {
-    const corners: Vec2[] = [
-      { x: bounds.minX, y: bounds.minY },
-      { x: bounds.maxX, y: bounds.minY },
-      { x: bounds.maxX, y: bounds.maxY },
-      { x: bounds.minX, y: bounds.maxY },
-    ];
-    let minClear = Infinity;
-    for (const corner of corners) {
-      const d = this.boundaryClearance(corner);
-      if (d < minClear) minClear = d;
-    }
-    return minClear;
+  #segmentSegmentDistance(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2): number {
+    // Check endpoints against the other segment
+    const d1 = pointSegmentDistance(a0, b0, b1);
+    const d2 = pointSegmentDistance(a1, b0, b1);
+    const d3 = pointSegmentDistance(b0, a0, a1);
+    const d4 = pointSegmentDistance(b1, a0, a1);
+    return Math.min(d1, d2, d3, d4);
   }
 }

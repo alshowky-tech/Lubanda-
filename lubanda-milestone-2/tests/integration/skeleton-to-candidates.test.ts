@@ -13,6 +13,18 @@ import type { SkeletonBranchId, PersonId } from "../../src/core/contracts/identi
 import type { LabelCandidateGenerationInput } from "../../src/core/labels/types.js";
 import { DEFAULT_ENGINE_CONFIGURATION } from "../../src/core/config/index.js";
 
+// ── L‑shaped concave polygon fixture ──
+const L_POLYGON: Polygon = Object.freeze({
+  points: Object.freeze([
+    { x: 0, y: 0 },
+    { x: 120, y: 0 },
+    { x: 120, y: 80 },
+    { x: 60, y: 80 },
+    { x: 60, y: 120 },
+    { x: 0, y: 120 },
+  ]),
+});
+
 const buildRealInput = async (seed = 42): Promise<{
   input: LabelCandidateGenerationInput;
   skeletonPlan: SkeletonPlan;
@@ -153,11 +165,36 @@ describe("Routing clearance integration", () => {
   });
 });
 
-describe("Concave boundary integration", () => {
-  it("generates candidates even with a concave template", async () => {
-    const { input } = await buildRealInput(42);
+describe("Concave boundary integration (L-shaped polygon)", () => {
+  it("detects notch-bridging candidates as INVALID using concave query", async () => {
+    const { input: rectangularInput } = await buildRealInput(42);
+    const measurer = rectangularInput.textMeasurementService;
+    const branchMap = rectangularInput.skeletonBranchMap;
+    const skeletonPlan = rectangularInput.skeletonPlan;
+    const nodeMap = rectangularInput.skeletonNodeMap;
+    const nameMap = rectangularInput.nameMap;
+
+    // Build empty collision index + concave polygon
+    const emptyIndex = { entries: Object.freeze([]), branchIdMap: new Map(), query: () => [] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const concaveQuery = new DefaultCandidateCollisionQuery(emptyIndex as any, L_POLYGON);
+
+    const concaveInput: LabelCandidateGenerationInput = {
+      skeletonPlan,
+      skeletonBranchMap: branchMap,
+      skeletonNodeMap: nodeMap,
+      graph: rectangularInput.graph,
+      nameMap,
+      configuration: rectangularInput.configuration,
+      collisionQuery: concaveQuery,
+      templateBoundary: L_POLYGON,
+      textMeasurementService: measurer,
+      cartoucheZones: undefined,
+      fixedLabelPlacements: Object.freeze([]),
+    };
+
     const gen = new DeterministicLabelCandidateGenerator();
-    const result = await gen.generate(input);
+    const result = await gen.generate(concaveInput);
     expect(result.allCandidates.length).toBeGreaterThan(0);
   });
 });
