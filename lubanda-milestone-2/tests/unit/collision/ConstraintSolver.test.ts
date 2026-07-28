@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testBranchAgainstIndex, testSelfCollision, testBoundaryContainment } from "../../../src/core/collision/ConstraintSolver.js";
 import { DEFAULT_COLLISION_POLICY } from "../../../src/core/collision/types.js";
 import { computeEnvelopeRadius } from "../../../src/core/routing/ClearanceModel.js";
-import type { SkeletonBranchId } from "../../../src/core/contracts/identifiers.js";
+import type { SkeletonBranchId, PersonId } from "../../../src/core/contracts/identifiers.js";
 import type {
   CollisionIndexEntry,
   CollisionIndex,
@@ -23,7 +23,7 @@ const makeRoutingRecord = (
   parentBranchId: parentBranchId as SkeletonBranchId | null,
   startNodeId: "n1",
   endNodeId: "n2",
-  ownerPersonId: "p1" as any,
+  ownerPersonId: "p1" as PersonId,
   territoryId: null,
   generation: 1,
   genealogyDepth: 1,

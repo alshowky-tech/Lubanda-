@@ -89,6 +89,7 @@ export interface CollisionPolicy {
   readonly finalValidationTolerance: number; // stricter sampling tolerance for final validation
   readonly adjacentJunctionRadius: number; // exemption zone for parent-child junctions
   readonly selfCollisionMinimumLength: number; // curve length threshold for self-collision testing
+  readonly maximumRepairIterations: number; // max iterations for local repair
 }
 
 // ── Collision validation report ───────────────────────────────────────
@@ -135,4 +136,5 @@ export const DEFAULT_COLLISION_POLICY: CollisionPolicy = Object.freeze({
   finalValidationTolerance: 2,
   adjacentJunctionRadius: 24,
   selfCollisionMinimumLength: 120,
+  maximumRepairIterations: 10,
 });

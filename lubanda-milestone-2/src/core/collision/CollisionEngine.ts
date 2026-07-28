@@ -3,6 +3,7 @@ import { expandBounds } from "../geometry/bounds.js";
 import { computeRequiredClearance } from "../routing/ClearanceModel.js";
 import { buildCollisionIndex } from "./CollisionIndex.js";
 import { testBranchAgainstIndex, testSelfCollision, testBoundaryContainment } from "./ConstraintSolver.js";
+import type { Vec2 } from "../geometry/types.js";
 import type { SkeletonBranchId } from "../contracts/identifiers.js";
 import type {
   CollisionInput,
@@ -192,8 +193,8 @@ export class DeterministicCollisionEngine {
   /**
    * Extract template boundary points from the input.
    */
-  private getTemplatePolygon(input: CollisionInput): readonly import("../geometry/types.js").Vec2[] {
-    const pts: import("../geometry/types.js").Vec2[] = [];
+  private getTemplatePolygon(input: CollisionInput): readonly Vec2[] {
+    const pts: Vec2[] = [];
     for (const branch of input.skeletonPlan.branches) {
       if (branch.generation === 1) {
         const rec = input.routingRecordMap.get(branch.id);

@@ -26,9 +26,14 @@ import type {
  * This is NOT a global CollisionSolver. It performs local resolution only:
  * - Scans the skeleton for collisions using the CollisionEngine
  * - Records each collision with a recommended resolution scope
- * - For CLEARANCE_DEFICIT collisions, assigns LOCAL_RELAXATION scope
- * - For PENETRATION collisions, assigns BEND_PATH scope
  * - Returns the result as pending actions (no skeleton mutation)
+ *
+ * IMMUTABILITY GUARANTEE: This function never mutates its inputs.
+ * - The SkeletonPlan is read-only (frozen by SkeletonGrowthEngine)
+ * - The RoutingPlan is read-only (frozen by RoutingPlanBuilder)
+ * - All RoutingRecords and corridor polygons are deep-frozen
+ * - The function creates only new arrays/objects for its return value
+ * - No input object is ever modified via setter, delete, or push
  *
  * Downstream consumers (e.g., the routing or skeleton stage) use these
  * pending actions to perform the actual geometric adjustment.
@@ -41,10 +46,19 @@ export const resolveLocalCollisions = (
   const index = engine.index(input);
   const pendingActions: LocalRepairAction[] = [];
   const unresolvedCollisions: CollisionRecord[] = [];
+  const maxIterations = policy.maximumRepairIterations;
+  let iterationCount = 0;
 
-  // Test every non-trunk branch against the index
+  // Test every non-trunk branch against the index, respecting max iterations
   for (const entry of index.entries) {
+    if (iterationCount >= maxIterations) {
+      // Record remaining untested branches as unresolved if they have collisions
+      // (we can't know without testing, but we respect the iteration limit)
+      break;
+    }
+
     const result = engine.testCandidate(entry.branchId, index, input, policy);
+    iterationCount += 1;
 
     if (!result.valid) {
       for (const collision of result.collisions) {

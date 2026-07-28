@@ -8,12 +8,14 @@ import snapshotSchema from "../../../schemas/genealogy-snapshot.schema.json";
 import demandSchema from "../../../schemas/demand-plan.schema.json";
 import territorySchema from "../../../schemas/territory-plan.schema.json";
 import skeletonSchema from "../../../schemas/skeleton-plan.schema.json";
+import collisionReportSchema from "../../../schemas/collision-report.schema.json";
 import { DEFAULT_ENGINE_CONFIGURATION } from "../../../src/core/config/defaults.js";
 import { DeterministicDemandEngine } from "../../../src/core/demand/index.js";
 import { buildGenealogyGraph } from "../../../src/core/genealogy/index.js";
 import { DeterministicTerritoryPlanner } from "../../../src/core/territory/index.js";
 import { acceptedSnapshot } from "../../helpers/genealogy-builders.js";
 import { rectangularTemplate } from "../../helpers/territory-builders.js";
+import { DeterministicCollisionEngine } from "../../../src/core/collision/CollisionEngine.js";
 import {
   ENGINE_ISSUE_CODES,
   ISSUE_SEVERITIES,
@@ -89,6 +91,18 @@ describe("schema parity", () => {
 
   it("compiles the Milestone 3 skeleton DTO schema", () => {
     expect(() => ajv.compile(skeletonSchema)).not.toThrow();
+  });
+
+  it("compiles the Milestone 4.2 collision report schema", () => {
+    expect(() => ajv.compile(collisionReportSchema)).not.toThrow();
+  });
+
+  it("validates emitted Milestone 4.2 collision report against schema", async () => {
+    const { buildCollisionInput } = await import("../../helpers/collision-builders.js");
+    const input = await buildCollisionInput(42);
+    const engine = new DeterministicCollisionEngine();
+    const report = engine.validateLayout(input);
+    expect(ajv.validate(collisionReportSchema, report), ajv.errorsText()).toBe(true);
   });
 
   it("validates emitted Milestone 2 DTOs against their schemas", async () => {

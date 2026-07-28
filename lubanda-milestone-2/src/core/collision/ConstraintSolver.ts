@@ -1,5 +1,5 @@
 import { computeRequiredClearance } from "../routing/ClearanceModel.js";
-import { pointSegmentDistance } from "../geometry/segments.js";
+import { pointSegmentDistance, intersectSegments } from "../geometry/segments.js";
 import { distance } from "../geometry/vec2.js";
 import type { Vec2 } from "../geometry/types.js";
 import type { SkeletonBranchId } from "../contracts/identifiers.js";
@@ -16,7 +16,8 @@ const EPSILON = 1e-7;
 
 /**
  * Narrow-phase check: measure minimum distance between two sampled polylines.
- * Uses segment-to-point distance for all segment pairs.
+ * Uses segment intersection detection and point-to-segment distance.
+ * If any segment pair intersects, distance is 0 (penetration).
  */
 const polylineMinDistance = (polyA: readonly Vec2[], polyB: readonly Vec2[]): number => {
   if (polyA.length < 2 || polyB.length < 2) return Infinity;
@@ -29,6 +30,12 @@ const polylineMinDistance = (polyA: readonly Vec2[], polyB: readonly Vec2[]): nu
     for (let bj = 0; bj < polyB.length - 1; bj += 1) {
       const b0 = polyB[bj]!;
       const b1 = polyB[bj + 1]!;
+
+      // Check segment intersection first (crossing = penetration)
+      const seg = intersectSegments(a0, a1, b0, b1, { epsilon: EPSILON });
+      if (seg.kind === "PROPER" || seg.kind === "COLLINEAR_OVERLAP") {
+        return 0;
+      }
 
       // Distance from a0 to segment b0-b1
       const dA0 = pointSegmentDistance(a0, b0, b1);

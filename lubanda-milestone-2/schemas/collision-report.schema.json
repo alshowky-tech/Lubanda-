@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/collision-report.schema.json",
+  "title": "Lubanda Milestone 4.2 Collision Validation Report",
+  "type": "object",
+  "required": ["accepted", "collisions", "metrics"],
+  "properties": {
+    "accepted": { "type": "boolean" },
+    "collisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/collisionRecord" }
+    },
+    "metrics": { "$ref": "#/$defs/collisionMetrics" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "vec2": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "collisionRecord": {
+      "type": "object",
+      "required": [
+        "branchIdA", "collisionClass", "closestPointA", "closestPointB",
+        "measuredDistance", "requiredClearance", "clearanceDeficit",
+        "severity", "recommendedResolution"
+      ],
+      "properties": {
+        "branchIdA": { "type": "string", "minLength": 1 },
+        "branchIdB": { "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] },
+        "collisionClass": {
+          "type": "string",
+          "enum": [
+            "BRANCH_BRANCH", "BRANCH_LABEL", "LABEL_LABEL",
+            "BRANCH_BOUNDARY", "LABEL_BOUNDARY", "BRANCH_DECORATION",
+            "SELF_INTERSECTION"
+          ]
+        },
+        "closestPointA": { "$ref": "#/$defs/vec2" },
+        "closestPointB": { "$ref": "#/$defs/vec2" },
+        "measuredDistance": { "type": "number", "minimum": 0 },
+        "requiredClearance": { "type": "number", "minimum": 0 },
+        "clearanceDeficit": { "type": "number", "minimum": 0 },
+        "severity": {
+          "type": "string",
+          "enum": ["CLEARANCE_DEFICIT", "PENETRATION", "OVERLAP"]
+        },
+        "recommendedResolution": {
+          "type": "string",
+          "enum": [
+            "REJECT_CANDIDATE", "BEND_PATH", "SHIFT_JUNCTION",
+            "ADJUST_TERRITORY", "MOVE_LABEL", "LOCAL_RELAXATION",
+            "REGIONAL_RESOLVE"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "collisionMetrics": {
+      "type": "object",
+      "required": [
+        "branchCount", "testedPairCount", "collisionCount",
+        "clearanceDeficitCount", "penetrationCount",
+        "boundaryViolationCount", "selfIntersectionCount",
+        "minimumClearance", "maximumClearanceDeficit"
+      ],
+      "properties": {
+        "branchCount": { "type": "integer", "minimum": 0 },
+        "testedPairCount": { "type": "integer", "minimum": 0 },
+        "collisionCount": { "type": "integer", "minimum": 0 },
+        "clearanceDeficitCount": { "type": "integer", "minimum": 0 },
+        "penetrationCount": { "type": "integer", "minimum": 0 },
+        "boundaryViolationCount": { "type": "integer", "minimum": 0 },
+        "selfIntersectionCount": { "type": "integer", "minimum": 0 },
+        "minimumClearance": { "type": "number", "minimum": 0 },
+        "maximumClearanceDeficit": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  }
+}
