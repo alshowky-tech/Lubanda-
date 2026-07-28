@@ -9,6 +9,7 @@ import demandSchema from "../../../schemas/demand-plan.schema.json";
 import territorySchema from "../../../schemas/territory-plan.schema.json";
 import skeletonSchema from "../../../schemas/skeleton-plan.schema.json";
 import collisionReportSchema from "../../../schemas/collision-report.schema.json";
+import labelLayoutResultSchema from "../../../schemas/label-layout-result.schema.json";
 import { DEFAULT_ENGINE_CONFIGURATION } from "../../../src/core/config/defaults.js";
 import { DeterministicDemandEngine } from "../../../src/core/demand/index.js";
 import { buildGenealogyGraph } from "../../../src/core/genealogy/index.js";
@@ -95,6 +96,10 @@ describe("schema parity", () => {
 
   it("compiles the Milestone 4.2 collision report schema", () => {
     expect(() => ajv.compile(collisionReportSchema)).not.toThrow();
+  });
+
+  it("compiles the Milestone 7.1 label layout result schema", () => {
+    expect(() => ajv.compile(labelLayoutResultSchema)).not.toThrow();
   });
 
   it("validates emitted Milestone 4.2 collision report against schema", async () => {

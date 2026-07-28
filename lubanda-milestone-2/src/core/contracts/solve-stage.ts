@@ -43,4 +43,14 @@ export const MILESTONE_4_2_STAGES = [
 
 export type Milestone42Stage = (typeof MILESTONE_4_2_STAGES)[number];
 
-export type CoreStage = Milestone1Stage | Milestone2Stage | Milestone3Stage | Milestone42Stage;
+export const MILESTONE_7_STAGES = [
+  "MEASURE_TEXT",
+  "GENERATE_CANDIDATES",
+  "SCORE_CANDIDATES",
+  "SOLVE_LABELS",
+  "VALIDATE_LABELS",
+] as const;
+
+export type Milestone7Stage = (typeof MILESTONE_7_STAGES)[number];
+
+export type CoreStage = Milestone1Stage | Milestone2Stage | Milestone3Stage | Milestone42Stage | Milestone7Stage;

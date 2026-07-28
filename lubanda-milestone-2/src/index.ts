@@ -1,6 +1,7 @@
 export * from "./core/config/index.js";
 export * from "./core/contracts/index.js";
 export * from "./core/collision/index.js";
+export * from "./core/labels/index.js";
 export * from "./core/demand/index.js";
 export * from "./core/determinism/index.js";
 export * from "./core/diagnostics/index.js";

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/label-layout-result.schema.json",
+  "title": "Lubanda Milestone 7 Label Layout Result",
+  "type": "object",
+  "required": ["accepted", "placements", "unresolvedReasons", "metrics", "deterministicFingerprint"],
+  "properties": {
+    "accepted": { "type": "boolean" },
+    "placements": { "type": "array", "items": { "$ref": "#/$defs/labelPlacement" } },
+    "unresolvedReasons": { "type": "array", "items": { "$ref": "#/$defs/unresolvedReason" } },
+    "metrics": { "$ref": "#/$defs/labelMetrics" },
+    "deterministicFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "vec2": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } },
+      "additionalProperties": false
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "labelPlacement": {
+      "type": "object",
+      "required": ["personId", "bounds", "anchor", "rotation", "leaderLength", "family", "text", "fontFamily", "fontSize", "fontWeight"],
+      "properties": {
+        "personId": { "type": "string", "minLength": 1 },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "anchor": { "$ref": "#/$defs/vec2" },
+        "rotation": { "type": "number" },
+        "leaderLength": { "type": "number", "minimum": 0 },
+        "family": {
+          "type": "string",
+          "enum": ["ALIGNED_WITH_BRANCH", "OFFSET_ABOVE_BRANCH", "OFFSET_BELOW_BRANCH", "LATERAL", "TERMINAL_LEAF", "CARTOUCHE_ZONE"]
+        },
+        "text": { "type": "string" },
+        "fontFamily": { "type": "string" },
+        "fontSize": { "type": "number", "minimum": 1 },
+        "fontWeight": { "type": "number", "minimum": 100, "maximum": 900 }
+      },
+      "additionalProperties": false
+    },
+    "unresolvedReason": {
+      "type": "object",
+      "required": ["personId", "code", "message", "candidateCount"],
+      "properties": {
+        "personId": { "type": "string", "minLength": 1 },
+        "code": {
+          "type": "string",
+          "enum": ["NO_CANDIDATES_GENERATED", "ALL_CANDIDATES_COLLIDE", "BACKTRACK_EXHAUSTED", "GEOMETRY_RELAXATION_FAILED", "TEXT_TOO_LONG", "FONT_MISSING", "INVALID_PERSON_REFERENCE"]
+        },
+        "message": { "type": "string" },
+        "candidateCount": { "type": "integer", "minimum": 0 },
+        "details": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "labelMetrics": {
+      "type": "object",
+      "required": ["totalPersonCount", "placedLabelCount", "unplacedLabelCount", "collisionCount", "minimumFontSize", "maximumRotation", "averageAnchorDistance", "totalOverlapCount"],
+      "properties": {
+        "totalPersonCount": { "type": "integer", "minimum": 0 },
+        "placedLabelCount": { "type": "integer", "minimum": 0 },
+        "unplacedLabelCount": { "type": "integer", "minimum": 0 },
+        "collisionCount": { "type": "integer", "minimum": 0 },
+        "minimumFontSize": { "type": "number", "minimum": 1 },
+        "maximumRotation": { "type": "number" },
+        "averageAnchorDistance": { "type": "number", "minimum": 0 },
+        "totalOverlapCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

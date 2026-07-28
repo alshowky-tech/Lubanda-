@@ -8,7 +8,8 @@ import type {
   CollisionInput,
   CollisionPolicy,
 } from "../../../src/core/collision/types.js";
-import type { SkeletonPlan, SkeletonBranch, SkeletonPlanId } from "../../../src/core/skeleton/types.js";
+import type { SkeletonPlan, SkeletonBranch } from "../../../src/core/skeleton/types.js";
+import type { SkeletonPlanId } from "../../../src/core/contracts/identifiers.js";
 import type { RoutingPlan, RoutingRecord } from "../../../src/core/routing/types.js";
 import type { Vec2, CubicBezier } from "../../../src/core/geometry/types.js";
 import type { Person } from "../../../src/core/genealogy/types.js";
