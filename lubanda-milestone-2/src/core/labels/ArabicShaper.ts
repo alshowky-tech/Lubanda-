@@ -379,16 +379,18 @@ export const shapedText = (text: string): string =>
 /**
  * Shape Arabic text with bidi-aware directional runs.
  *
- * This function:
- * 1. Splits text into bidi directional runs using BidiProcessor
- * 2. Applies Arabic shaping within each run independently
- * 3. Does NOT shape Arabic letters across directional boundaries
- * 4. For RTL runs, reverses the shaped glyphs to visual order
- * 5. Concatenates runs in visual order
+ * Process:
+ * 1. Split text into directional runs per UAX #9 (logical order)
+ * 2. Shape each run's text using shapeArabic (logical-order neighbors)
+ * 3. For RTL runs (odd level), reverse shaped content to visual order
+ * 4. For RTL paragraphs, reverse run order to visual order
+ * 5. Concatenate runs for final visual-order output
  *
- * NOTE: Uses require() in function body to avoid ESM import of
- * BidiProcessor at module level, since BidiProcessor is a separate
- * concern that may not always be needed.
+ * This ensures:
+ * - Arabic shaping uses logical-order neighbors (initial/medial/final correct)
+ * - Numeric sequences retain internal order (digits not reversed)
+ * - RTL run content appears in correct visual order
+ * - Arabic letters never connect across directional boundaries
  *
  * @param text - input text in logical order
  * @param direction - base paragraph direction ("LTR" | "RTL")
@@ -396,21 +398,24 @@ export const shapedText = (text: string): string =>
  */
 export const shapeWithBidi = (text: string, direction: string): string => {
   const result = reorderBidi(text, direction);
-
-  // Shape each bidi run independently
   const chars = [...text];
-  const visualGlyphs: string[] = [];
+  const isRTL = direction === "RTL";
 
-  // Within each run, shape the run's text independently
+  // Shape each bidi run independently (in LOGICAL order)
+  const runResults: string[] = [];
   for (const run of result.runs) {
     const runText = run.chars.map((bc: { originalIndex: number }) => chars[bc.originalIndex]!).join("");
     const shapedRun = shapeArabic(runText);
     const shapedChars = shapedRun.glyphs.map((g) => String.fromCodePoint(g.codePoint));
 
-    // For RTL runs, reverse the shaped characters within the run (visual order)
+    // For RTL runs (odd level), reverse shaped content to visual order
+    // For LTR runs (even level), keep as-is
     const visualRun = run.direction === "R" ? [...shapedChars].reverse() : shapedChars;
-    visualGlyphs.push(...visualRun);
+    runResults.push(visualRun.join(""));
   }
 
-  return visualGlyphs.join("");
+  // For RTL paragraphs, reverse run order to visual order
+  // For LTR paragraphs, runs are already in visual order
+  const orderedResults = isRTL ? [...runResults].reverse() : runResults;
+  return orderedResults.join("");
 };
