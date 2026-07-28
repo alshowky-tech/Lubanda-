@@ -236,6 +236,97 @@ describe("DeterministicSkeletonGrowthEngine", () => {
     expect(result.metrics.territoryMissCount).toBeGreaterThan(0);
   });
 
+  it("every node has unique outgoingBranchIds (no duplicates)", async () => {
+    const { skeletonPlan } = await growSkeleton(syntheticSnapshot({ size: 10, shape: "BALANCED" }));
+    for (const node of skeletonPlan.nodes) {
+      const unique = new Set(node.outgoingBranchIds);
+      expect(unique.size).toBe(node.outgoingBranchIds.length);
+    }
+  });
+
+  it("a single-child BRANCH_SPLIT end node has exactly one outgoing branch", async () => {
+    const { skeletonPlan } = await growSkeleton(syntheticSnapshot({ size: 10, shape: "LINEAR" }));
+    for (const node of skeletonPlan.nodes) {
+      if (node.kind === "BRANCH_SPLIT" && node.outgoingBranchIds.length > 0) {
+        expect(node.outgoingBranchIds.length).toBe(1);
+      }
+    }
+  });
+
+  it("every interior BRANCH_SPLIT has exactly one outgoing branch", async () => {
+    const { skeletonPlan } = await growSkeleton(syntheticSnapshot({ size: 10, shape: "BALANCED" }));
+    for (const node of skeletonPlan.nodes) {
+      if (node.kind !== "BRANCH_SPLIT") continue;
+      const parentBranch = skeletonPlan.branches.find((b) => b.id === node.incomingBranchId);
+      if (!parentBranch) continue;
+      // An interior split is one that is NOT the parent's end node
+      if (node.id === parentBranch.endNodeId) continue;
+      expect(node.outgoingBranchIds.length).toBe(1);
+      // Verify the outgoing branch starts at this node
+      for (const childId of node.outgoingBranchIds) {
+        const child = skeletonPlan.branches.find((b) => b.id === childId);
+        expect(child).toBeDefined();
+        if (child) expect(child.startNodeId).toBe(node.id);
+      }
+    }
+  });
+
+  it("single-child parent end node is BRANCH_SPLIT with exactly one outgoing", async () => {
+    // acceptedSnapshot: person 2 has exactly 1 child (person 4)
+    const { skeletonPlan } = await growSkeleton(acceptedSnapshot());
+    expect(skeletonPlan.status).toBe("ACCEPTED");
+    // Find person 2's branch (generation 1, ownerPersonId "2")
+    const p2Branch = skeletonPlan.branches.find((b) => b.ownerPersonId === "2" && b.generation === 1);
+    expect(p2Branch).toBeDefined();
+    if (!p2Branch) return;
+    // Person 2's branch has exactly 1 child (person 4)
+    expect(p2Branch.childrenBranchIds.length).toBe(1);
+    // The end node of this single-child branch must be BRANCH_SPLIT
+    const endNode = skeletonPlan.nodes.find((n) => n.id === p2Branch.endNodeId);
+    expect(endNode).toBeDefined();
+    if (endNode) expect(endNode.kind).toBe("BRANCH_SPLIT");
+    // The end node must have exactly 1 outgoing (the child branch)
+    expect(endNode!.outgoingBranchIds.length).toBe(1);
+    expect(endNode!.outgoingBranchIds[0]).toBe(p2Branch.childrenBranchIds[0]);
+    // The child starts at this end node
+    const childBranch = skeletonPlan.branches.find((b) => b.id === p2Branch.childrenBranchIds[0]);
+    expect(childBranch).toBeDefined();
+    if (childBranch) expect(childBranch.startNodeId).toBe(endNode!.id);
+  });
+
+  it("validator rejects duplicated outgoingBranchIds with exact reason", async () => {
+    const { skeletonPlan } = await growSkeleton(syntheticSnapshot({ size: 10, shape: "BALANCED" }));
+    const validator = new SkeletonValidator();
+    const graph = buildGenealogyGraph(acceptedSnapshot());
+    // Find a BRANCH_SPLIT node with at least one outgoing and duplicate its first entry
+    const targetNode = skeletonPlan.nodes.find(
+      (n) => n.kind === "BRANCH_SPLIT" && n.outgoingBranchIds.length > 0,
+    );
+    expect(targetNode).toBeDefined();
+    if (!targetNode) return;
+    const duplicatedOut = [...targetNode.outgoingBranchIds, targetNode.outgoingBranchIds[0]!];
+    const corruptedNodes = skeletonPlan.nodes.map((n) =>
+      n.id === targetNode.id ? { ...n, outgoingBranchIds: Object.freeze(duplicatedOut) } : n,
+    );
+    const tmap = new Map<string, Polygon>();
+    for (const b of skeletonPlan.branches) {
+      if (b.territoryId) tmap.set(b.territoryId, { points: [{x:0,y:0},{x:5000,y:0},{x:5000,y:3000},{x:0,y:3000}] });
+    }
+    const result = validator.validate(
+      { ...skeletonPlan, nodes: Object.freeze(corruptedNodes) } as unknown as SkeletonPlan,
+      graph, asPersonId(skeletonPlan.selectedRootId),
+      { points: [{x:0,y:0},{x:4000,y:0},{x:4000,y:2500},{x:0,y:2500}] }, tmap,
+    );
+    expect(result.accepted).toBe(false);
+    // Should contain an issue with reason "node.outgoingBranchIds contains duplicate entries"
+    const dupIssue = result.issues.find(
+      (i) => i.details && typeof i.details === "object" && "reason" in i.details &&
+        (i.details as Record<string, unknown>).reason === "node.outgoingBranchIds contains duplicate entries",
+    );
+    expect(dupIssue).toBeDefined();
+    expect(dupIssue!.code).toBe("SKELETON_BRANCH_INVALID");
+  });
+
   it("large territory has zero misses", async () => {
     const { skeletonPlan } = await growSkeleton(acceptedSnapshot());
     const validator = new SkeletonValidator();
