@@ -513,12 +513,15 @@ export class DeterministicSkeletonGrowthEngine
       const branchLength = selected.length;
       const branchId = asSkeletonBranchId(`branch:${personId}:${branches.size}`);
 
-      // Create end node
+      // Create end node.
+      // BRANCH_SPLIT only when at least one child starts at this exact node
+      // (i.e. exactly one child). For 0 or 2+ children, use BRANCH_TERMINAL.
       const branchEndNodeId = nextNodeId("branch-node");
+      const endNodeKind = children.length === 1 ? "BRANCH_SPLIT" : "BRANCH_TERMINAL";
       const endNode: SkeletonNode = {
         id: branchEndNodeId,
         point: endPoint,
-        kind: children.length === 0 ? "BRANCH_TERMINAL" : "BRANCH_SPLIT",
+        kind: endNodeKind,
         incomingBranchId: branchId,
         outgoingBranchIds: [],
         ownerLineageRootId: personId,
@@ -632,6 +635,17 @@ export class DeterministicSkeletonGrowthEngine
         );
         if (result.branch) {
           childBranchIds.push(result.branch.id);
+          // Update the start node's outgoingBranchIds (interior BRANCH_SPLIT or end node)
+          const startNodeForChild = nodes.get(childStartNodeId);
+          if (startNodeForChild && !startNodeForChild.outgoingBranchIds.includes(result.branch.id)) {
+            nodes.set(childStartNodeId, {
+              ...startNodeForChild,
+              outgoingBranchIds: Object.freeze([
+                ...startNodeForChild.outgoingBranchIds,
+                result.branch.id,
+              ]),
+            });
+          }
         }
         // If growthFailed is set, stop recursing
         if (growthFailed) break;
