@@ -1,0 +1,16 @@
+{
+  "imported": true,
+  "sheetName": "السلسلة الشوكية الهاشمية",
+  "normalizedRowCount": 1386,
+  "ignoredRowCount": 0,
+  "sourceChecksum": "30fb1f4d977ae882b631b727afe50ef2de6ae4c9c8092bd4d7203670cdd35da9",
+  "accepted": true,
+  "statistics": {
+    "rowCount": 1386,
+    "acceptedPersonCount": 1386,
+    "rootCount": 1,
+    "maximumGeneration": 13
+  },
+  "issueCounts": {},
+  "issues": []
+}

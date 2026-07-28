@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "geometry": {
+    "epsilon": 1e-9,
+    "bezierSubdivisionTolerance": 0.5,
+    "maxSubdivisionDepth": 20
+  },
+  "demand": {
+    "subtreeSizeWeight": 1,
+    "directChildCountWeight": 1.25,
+    "terminalCountWeight": 0.75,
+    "maxDepthWeight": 1,
+    "branchEntropyWeight": 0.5,
+    "labelWeight": 1,
+    "routingClearanceWeight": 1,
+    "estimatedCharacterWidth": 8,
+    "estimatedLabelHeight": 18,
+    "personPadding": 12,
+    "safetyMargin": 8,
+    "woodClearance": 10,
+    "minimumArea": 400,
+    "maximumArea": 10000000,
+    "minimumDemand": 1,
+    "maximumDemand": 10000,
+    "lineageWeights": {},
+    "roundingDecimalPlaces": 6
+  },
+  "territory": {
+    "maxNegotiationIterations": 40,
+    "minimumCorridorWidth": 24,
+    "minimumCorridorLength": 8,
+    "corridorClearance": 8,
+    "minimumTerritoryArea": 2500,
+    "boundaryMargin": 24,
+    "junctionZoneRadius": 36,
+    "rootEntryWidth": 72,
+    "rootEntryDepth": 96,
+    "maximumAreaErrorRatio": 0.12,
+    "convergenceTolerance": 0.0025,
+    "seedJitter": 0.18,
+    "boundarySamplingPoints": 64,
+    "maximumFragmentCount": 1,
+    "roundingDecimalPlaces": 6
+  },
+  "skeleton": {
+    "candidateCount": 24,
+    "maxCurvature": 0.45,
+    "minimumBranchLength": 18
+  },
+  "collision": {
+    "branchClearance": 8,
+    "labelClearance": 6,
+    "barkAllowance": 4
+  },
+  "labels": {
+    "minimumFontSize": 12,
+    "maximumRotationDegrees": 20
+  },
+  "stability": {
+    "priorLayoutWeight": 0.75,
+    "maximumUnrelatedMovement": 20
+  },
+  "performance": {
+    "checkpointIntervalMs": 2000,
+    "maxSolveMilliseconds": 300000
+  }
+}

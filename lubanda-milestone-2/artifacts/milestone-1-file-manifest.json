@@ -1,0 +1,382 @@
+{
+  "schemaVersion": "1.0",
+  "scope": "All Milestone 1 project files; node_modules and archives excluded",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "78e120f56ffe30fc6231e71a2157402a8cc65b2f80798d980705853976704379"
+    },
+    {
+      "path": "README.md",
+      "sha256": "38de2862819aedef4a95a5336092934f519a2b7a53c42ec58ef5cbbbc07cc6e0"
+    },
+    {
+      "path": "artifacts/milestone-1-completion-report.md",
+      "sha256": "7e99ad5622f3e17548055b08007db07848df1100b8cdc3ff25e1528372012376"
+    },
+    {
+      "path": "artifacts/milestone-1-file-manifest.json",
+      "sha256": null
+    },
+    {
+      "path": "artifacts/milestone-1-geometry-diagnostics.svg",
+      "sha256": "7e540eb3ff5469708e798b0b67d899d388a2697030adb9e6b3a558466e9d91cc"
+    },
+    {
+      "path": "artifacts/official-workbook-validation.json",
+      "sha256": "e045889d72853295dff267f37c8c07724da02fba1ef0185fd31bb7190f697df2"
+    },
+    {
+      "path": "configs/default-engine-configuration.json",
+      "sha256": "3a3b798e6cd51a07d305fa022b1c70e6e527d1ecd29d5121dfaf4954c92d210a"
+    },
+    {
+      "path": "docs/architecture/milestone-1-architecture.md",
+      "sha256": "309ac7e92b9c96a2e4931e7e12d7901d5f53b3cf4144fcf5742d813130ac5e06"
+    },
+    {
+      "path": "docs/decisions/0001-milestone-1-contract-clarifications.md",
+      "sha256": "c543fe4c415d03e482c67e17a0d773beaa5102266395ab6cbe3d690c3751d1ba"
+    },
+    {
+      "path": "docs/decisions/geometry-semantics.md",
+      "sha256": "e60b5e00f98a31660e4b02c5e59a57f171df18e115ce463fdff036dbe57dfcd0"
+    },
+    {
+      "path": "docs/decisions/spatial-hash-semantics.md",
+      "sha256": "ee758a4cf39f8d9f90b412fd6ee4638c0a48174fe748ed6b3f3fd7aa8682c724"
+    },
+    {
+      "path": "docs/milestone-1-file-plan.md",
+      "sha256": "f5b85b188c8c7b80fbc7b2e7cb6bb0ed575a444afbe2aa4ac995c18c8f4eedf3"
+    },
+    {
+      "path": "docs/traceability/milestone-1-matrix.md",
+      "sha256": "a2227cb4d6b0206c38d88328c2e59ea2b9cbcfeff563179601564463ed0ad37a"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "sha256": "8860bc6bfff31f8aa22ff6ad0901dba585ae24e87ae4480a7b8958233db8d5ba"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "244cdab43ed564f1771342686cd1358c9a78ae6563dddaca12ad3f5698eb8321"
+    },
+    {
+      "path": "package.json",
+      "sha256": "bf1b4b7133fa3ea3a102f80c3e2aa4e3c85da25e1026c664a95bd918fa864a0b"
+    },
+    {
+      "path": "schemas/engine-configuration.schema.json",
+      "sha256": "6819a6a5b6451133f388231d0c468af89128fab8b66731c183c779344a31cde7"
+    },
+    {
+      "path": "schemas/error-codes.schema.json",
+      "sha256": "2e3be2a25f45c351bf117c1a34e5a287fa5b6c748679d6d4fa48a43cb3961695"
+    },
+    {
+      "path": "schemas/genealogy-snapshot.schema.json",
+      "sha256": "3a9c41638eda95ccbdfd354c60439341e180efe5694c7986da6ed603fc6ba85e"
+    },
+    {
+      "path": "schemas/person.schema.json",
+      "sha256": "959fd3681b7eb38135cc70e055494d97313f6e7274d75c14c3977fa35fcd9d9c"
+    },
+    {
+      "path": "scripts/generate-diagnostic-svg.ts",
+      "sha256": "822917ce00f7c5f8ef3a4563624fefdce7893600254ee3ab50958c722adb8a0e"
+    },
+    {
+      "path": "scripts/generate-file-manifest.ts",
+      "sha256": "8e3b7003950b61826e7f42f9e47c76d9c65b0ed499634c0d6957079290b849e2"
+    },
+    {
+      "path": "scripts/validate-official-workbook.ts",
+      "sha256": "ad574ea0163618977972ddf3c96a1b345d3f4d34b8c2b1918247483133ffe177"
+    },
+    {
+      "path": "src/core/config/defaults.ts",
+      "sha256": "7ebb4291544de1d46e96033a3fd5a058adf511366c0ec789c32209ff6be95f7c"
+    },
+    {
+      "path": "src/core/config/index.ts",
+      "sha256": "7e41417c21df45a7dd730a2665f82df2ecb03cc36d1c2b45deeec63114d9ca5e"
+    },
+    {
+      "path": "src/core/config/types.ts",
+      "sha256": "937a2a4d35dcfd05a730c3bd0232ecef7b55f49d44f594505472e0ee77243890"
+    },
+    {
+      "path": "src/core/config/validate-configuration.ts",
+      "sha256": "1779c8d45cf75a7d9ab7ac77d381fde66ce09c3c37e77c23c95d67b41466f791"
+    },
+    {
+      "path": "src/core/contracts/diagnostics.ts",
+      "sha256": "248d9463d066f85c4414e9bd305851974e8c37c54b5ab8dc81b9e8f7911ff73c"
+    },
+    {
+      "path": "src/core/contracts/identifiers.ts",
+      "sha256": "a17c35ec641ea17ebc4571534a131b44f9b80e8445c4cea3f67ca09b06f6e458"
+    },
+    {
+      "path": "src/core/contracts/index.ts",
+      "sha256": "c664d60e1ea8f9ae6e7db4cc432238f90cf5b53b6617c8e673e848d3332f3e76"
+    },
+    {
+      "path": "src/core/contracts/issues.ts",
+      "sha256": "0c0187e502872e63219496e26a2e94fa2773b31096efb47e18d5450cebf2974d"
+    },
+    {
+      "path": "src/core/contracts/solve-stage.ts",
+      "sha256": "688952c21b46db64c91eace6469ee0bf6e42176662824c13e7264cb335d10010"
+    },
+    {
+      "path": "src/core/contracts/stage-result.ts",
+      "sha256": "a98841ba36f4697f117a1f5e50786ce65f1648fe2e67392480746c0d1572f055"
+    },
+    {
+      "path": "src/core/genealogy/canonical-order.ts",
+      "sha256": "e3a2af9787e834fcfa6f93d2c776fc252cf4ee6bf6307c27e3137399c86b2b7d"
+    },
+    {
+      "path": "src/core/genealogy/checksum.ts",
+      "sha256": "1d7d6d6fd319d938e4fe8ca2b71a905ff14499e6688dd95c9f7c4dab9cb47df7"
+    },
+    {
+      "path": "src/core/genealogy/graph.ts",
+      "sha256": "58e0cab881c848a034027dd85c5750185162938f39aaebb980a52a4e8d8e2ecc"
+    },
+    {
+      "path": "src/core/genealogy/index.ts",
+      "sha256": "df19f3a6e9d42127be1ef125482d10fa6e77879c949b3342481ebdb7b4c38e55"
+    },
+    {
+      "path": "src/core/genealogy/normalize.ts",
+      "sha256": "53c21e0917746b7da561c612a961db57f4165c8db999b3e21b58985cc66c6086"
+    },
+    {
+      "path": "src/core/genealogy/numerals.ts",
+      "sha256": "0831e6634dd67dd7cc6f10b89b3621391f0a324f3d0054e190d59965f0c2a1a4"
+    },
+    {
+      "path": "src/core/genealogy/scope.ts",
+      "sha256": "0aeb866a774d019735f128ad8c4b9cfd2c4058117363252856e5b3254778bf0c"
+    },
+    {
+      "path": "src/core/genealogy/snapshot.ts",
+      "sha256": "6369fac0950c48a0f24661b3ae04b7f1c7e130b5e017109c8ca8d46cf9904845"
+    },
+    {
+      "path": "src/core/genealogy/types.ts",
+      "sha256": "85052feeaa93d304189389c665e7c1a5d9b902d974e94c52cef5a5d9055f00e8"
+    },
+    {
+      "path": "src/core/geometry/bezier.ts",
+      "sha256": "53fefa1fc9e495f4333c9db36913eff5b67cc3a11b9e630763d1a789a60d8b84"
+    },
+    {
+      "path": "src/core/geometry/bounds.ts",
+      "sha256": "719d404dde8a9d8f01e694f17fd4db2222ae0254fccdc92599fff8ae26cdff11"
+    },
+    {
+      "path": "src/core/geometry/finite.ts",
+      "sha256": "72ca8d385a406339aeafbc282103d1fb6f60ca73b8b815faab08634035c94077"
+    },
+    {
+      "path": "src/core/geometry/index.ts",
+      "sha256": "6cb40723aaeb24421f2325a90d76ca6e0a382aed4b021b27ba15334420a67039"
+    },
+    {
+      "path": "src/core/geometry/numeric-policy.ts",
+      "sha256": "af1c5e9f94add502a9a4345aa11903a8cfec5baedfa3e87cb1b0a9663ea42160"
+    },
+    {
+      "path": "src/core/geometry/polygon.ts",
+      "sha256": "139a34b540b25ed4f364ef250d3e2d2f68bf1787082e3f54026153fdefab0140"
+    },
+    {
+      "path": "src/core/geometry/segments.ts",
+      "sha256": "d1f55e3abffbe2b1e2ef262c986d12312c884a48603c36ecf28255ea7831deb3"
+    },
+    {
+      "path": "src/core/geometry/types.ts",
+      "sha256": "11a9833194c2929bdfd9875d6b582a138494613a1555f63c91fe22c864c876b0"
+    },
+    {
+      "path": "src/core/geometry/vec2.ts",
+      "sha256": "afc0781735021cf5f19f283831562f16e11681dab42ed31867dbaa6a5347bbd7"
+    },
+    {
+      "path": "src/core/import/WorkbookImporter.ts",
+      "sha256": "9da4e6b6e3da7dd6309888c187af424edfad0c394751749a698f27405cbad8d8"
+    },
+    {
+      "path": "src/core/import/detect-header.ts",
+      "sha256": "86bfda462188118876f8c0da7e81850d93511de34d7fc02800b8a095e1ae3f5d"
+    },
+    {
+      "path": "src/core/import/header-aliases.ts",
+      "sha256": "283a39772b89ad1341d23ee9f7dc498f3e762ef04f6c83c9e221a902e3817670"
+    },
+    {
+      "path": "src/core/import/index.ts",
+      "sha256": "b2e65ae404a46ac58eefef7ab532108f19a5da4563f21a88f200f503479e714f"
+    },
+    {
+      "path": "src/core/import/types.ts",
+      "sha256": "1d0cf247f9374ab1a3b3f65edd0d9a9c91a579dc29cf0b7679216b592e885f9b"
+    },
+    {
+      "path": "src/core/import/workbook-limits.ts",
+      "sha256": "8c911deb4e2131db4591dafa5a8f401fb4cf5e41ad7e58a2f61ba1837a08c63d"
+    },
+    {
+      "path": "src/core/import/xlsx-reader.ts",
+      "sha256": "8855823a9d857a6e41a4c01b96db9173c885c010461ac13ff0a4916ec3354bb2"
+    },
+    {
+      "path": "src/core/import/zip-preflight.ts",
+      "sha256": "7797b50413ae36bbd37db096ac8804e887a8a3bfc95defc14252be31d00c72b1"
+    },
+    {
+      "path": "src/core/spatial/SpatialHash.ts",
+      "sha256": "9e1f6fe7df0ff0883406f148795b70fa330419e8edf0ef2aaf261aec5759bc95"
+    },
+    {
+      "path": "src/core/spatial/index.ts",
+      "sha256": "7db96b69b95e7b7e80173d60253c77087897a92d4fe0aabb46f27160f1b855a0"
+    },
+    {
+      "path": "src/core/spatial/types.ts",
+      "sha256": "d9950094522a2ae782568ae4587e34ed73a6e05dc5cc0e46d77855580f8b5065"
+    },
+    {
+      "path": "src/core/validation/cycle-detection.ts",
+      "sha256": "15a2c0b2cbd375d0663e77f9de9b0f9504744dcc0bc6117a17e854df827da7d4"
+    },
+    {
+      "path": "src/core/validation/index.ts",
+      "sha256": "6481cd15b36dc003fed5c420ff38874c98ef2c78e4f18d9c7c7ed93f921e5848"
+    },
+    {
+      "path": "src/core/validation/issue-codes.ts",
+      "sha256": "c88d957eb2da363ec874f80e354e5b0af86cc2200049ffb0c629a5fac5a92a76"
+    },
+    {
+      "path": "src/core/validation/policy.ts",
+      "sha256": "e5db318ae1f7a448fbcdb02a601136106b792cd542395fa024669b171eb6a365"
+    },
+    {
+      "path": "src/core/validation/validator.ts",
+      "sha256": "4c44cf6fc2c5bf35e84561f35be74e0cfa81a732075efb24ac6845cde0596d52"
+    },
+    {
+      "path": "src/index.ts",
+      "sha256": "0a647107e8057c1f631758b38d29573ef5db2acb4d187b995699488e13882864"
+    },
+    {
+      "path": "tests/helpers/genealogy-builders.ts",
+      "sha256": "cf92c89a411bb9028494fc0cedc8f870f94da724ee600626127299a8ae26ff67"
+    },
+    {
+      "path": "tests/helpers/workbook-builders.ts",
+      "sha256": "1efbed7c8a03266386e308b31f6f1796ebac3ba21b0857e4078b036fb169dcb0"
+    },
+    {
+      "path": "tests/integration/deterministic-replay.test.ts",
+      "sha256": "014b5db36b5d8be0aef6c2af184c8a92064ebf33984acdded0a14d0883f997ec"
+    },
+    {
+      "path": "tests/integration/diagnostic-svg.test.ts",
+      "sha256": "120dd5393b9d0fe87679876eda849ed223cfdb81ce4e3d19ecb0a793a61d812a"
+    },
+    {
+      "path": "tests/integration/workbook-to-graph.test.ts",
+      "sha256": "04c40463d59f6163ff84d6ebf8139696b3171b0d09bb04bc6c0124ef57d41cff"
+    },
+    {
+      "path": "tests/property/genealogy.property.test.ts",
+      "sha256": "0d3de630dff8133d544b4c1c9e7eb40deb540bcf4489bea8ad9aa609e112ee03"
+    },
+    {
+      "path": "tests/property/geometry.property.test.ts",
+      "sha256": "1d5141122ee5f325d69406809f1c415562eae58629722e45cb86d377604b0203"
+    },
+    {
+      "path": "tests/property/spatial-index.property.test.ts",
+      "sha256": "007d15b4131abcd4f0bbe17bbb9b0ebcfe6c61b5fc47f0896897bdbc1e6c8b0c"
+    },
+    {
+      "path": "tests/unit/config/configuration.test.ts",
+      "sha256": "a8a9f7cdf45d5b989a1c7b88eaac4b29f8c0cd46c0a25247972ef1761437b8ba"
+    },
+    {
+      "path": "tests/unit/contracts/schema-parity.test.ts",
+      "sha256": "9d3dd166cab4ca1a264cbc7f22532311ed3e29f99ec497ca2aa8a5da3d3b5381"
+    },
+    {
+      "path": "tests/unit/genealogy/checksum.test.ts",
+      "sha256": "269211e70c709ada4a9557de6c7950eeca2b37c7ba389a64b764aa8b9c593e44"
+    },
+    {
+      "path": "tests/unit/genealogy/graph.test.ts",
+      "sha256": "0ca635d926c4521ddde13aef46acf7c6cacdab5a7066dac304f94220ebf89e89"
+    },
+    {
+      "path": "tests/unit/genealogy/normalization.test.ts",
+      "sha256": "b00852d520a4a3d532b8f0447fc2ffdc88c647175c60af7466c2bccc6c5b3ec8"
+    },
+    {
+      "path": "tests/unit/genealogy/scope.test.ts",
+      "sha256": "f67c8612a210c0de8a6c0dd3fcbad27967bdd9ec820ca95637578c46b2070fb1"
+    },
+    {
+      "path": "tests/unit/geometry/bezier.test.ts",
+      "sha256": "cafb27aaed34e9cc95d05e04154e97504cb2edb80646eca03bdb83975c77da6e"
+    },
+    {
+      "path": "tests/unit/geometry/bounds.test.ts",
+      "sha256": "66a7b965a5f517537925bb9b34bf183dbb6eafe61ecb7c84b98656d804869769"
+    },
+    {
+      "path": "tests/unit/geometry/polygon.test.ts",
+      "sha256": "172f582abdae5aed3aeee37265b8113d5aa887a3ecda25e78ff70b200bbdc2f1"
+    },
+    {
+      "path": "tests/unit/geometry/segments.test.ts",
+      "sha256": "ee823211bd0603615998eaa37ff8ed4f1cd34440e763ba0a2783261dc004bdcb"
+    },
+    {
+      "path": "tests/unit/geometry/vec2.test.ts",
+      "sha256": "1da0bcb3aba54128766f2a6710658f9dba5c7c4e565e5369b7bb8568347e4ff8"
+    },
+    {
+      "path": "tests/unit/import/header-detection.test.ts",
+      "sha256": "eff0379ab8f751e4c491ced4a719df5baac71c99dd9822b79bc591829280c21f"
+    },
+    {
+      "path": "tests/unit/import/workbook-import.test.ts",
+      "sha256": "7906815076f9d0624bc8e3aed4dd11c2cfcea0dd54427c2fc14456da108df394"
+    },
+    {
+      "path": "tests/unit/spatial/SpatialHash.test.ts",
+      "sha256": "19e693bf8851d1ba09aad1efa05ef4fa16835e4460ecabfdd23fd8fcb50397ea"
+    },
+    {
+      "path": "tests/unit/validation/cycle-detection.test.ts",
+      "sha256": "3d632048d505e040ab71be2474186dfc792648f1581db4bd951eca421f45fed5"
+    },
+    {
+      "path": "tests/unit/validation/validator.test.ts",
+      "sha256": "5e9c71ab335f911af3ea940a3ee2ed038ff2bf96040d9dd5d01da4d0702e78ed"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "60e9b0a9c21139f4bbe215839255efb37cb34e475e0cc8009bf7fdc3b92723e8"
+    },
+    {
+      "path": "vitest.config.ts",
+      "sha256": "a78e187462496a99d7843c928fa10e8ee4e55ab6c54b5e85ac0deb0cb43f2a54"
+    }
+  ]
+}
