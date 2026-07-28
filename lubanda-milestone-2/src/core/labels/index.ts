@@ -2,3 +2,8 @@ export * from "./types.js";
 export * from "./cache.js";
 export * from "./TextMeasurer.js";
 export * from "./ArabicShaper.js";
+export * from "./BidiProcessor.js";
+export * from "./CandidateCollisionQuery.js";
+export * from "./LabelCandidateGenerator.js";
+export * from "./LabelCandidateScorer.js";
+export * from "./LabelCandidateValidator.js";
