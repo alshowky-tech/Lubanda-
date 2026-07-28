@@ -161,6 +161,17 @@ export class SkeletonValidator {
     }
 
     // ── 3. BRANCH_SPLIT validation (Defects 2 & 3) ──
+    // Also check all nodes for duplicate outgoingBranchIds
+    for (const node of plan.nodes) {
+      const uniqueOutgoing = new Set(node.outgoingBranchIds);
+      if (uniqueOutgoing.size !== node.outgoingBranchIds.length) {
+        invalidBranchCount += 1;
+        issues.push(issue("SKELETON_BRANCH_INVALID", "VALIDATE_SKELETON", "skeleton.branchInvalid", [node.id], {
+          reason: "node.outgoingBranchIds contains duplicate entries",
+        }));
+      }
+    }
+
     for (const node of plan.nodes) {
       if (node.kind !== "BRANCH_SPLIT") continue;
 

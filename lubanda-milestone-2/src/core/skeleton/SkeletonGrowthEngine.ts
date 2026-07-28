@@ -635,17 +635,9 @@ export class DeterministicSkeletonGrowthEngine
         );
         if (result.branch) {
           childBranchIds.push(result.branch.id);
-          // Update the start node's outgoingBranchIds (interior BRANCH_SPLIT or end node)
-          const startNodeForChild = nodes.get(childStartNodeId);
-          if (startNodeForChild && !startNodeForChild.outgoingBranchIds.includes(result.branch.id)) {
-            nodes.set(childStartNodeId, {
-              ...startNodeForChild,
-              outgoingBranchIds: Object.freeze([
-                ...startNodeForChild.outgoingBranchIds,
-                result.branch.id,
-              ]),
-            });
-          }
+          // 💥 DO NOT update outgoingBranchIds here — growBranchRecursive
+          // already adds the branch to its startNodeId's outgoingBranchIds
+          // via the usedStartNodeId update at the end of the function.
         }
         // If growthFailed is set, stop recursing
         if (growthFailed) break;
