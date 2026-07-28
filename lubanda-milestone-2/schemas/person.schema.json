@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/person.schema.json",
+  "title": "Lubanda Accepted Person",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "parentId",
+    "generation",
+    "sourceRowNumber",
+    "explicitDisplayOrder"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "parentId": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ]
+    },
+    "generation": { "type": "integer" },
+    "sourceRowNumber": { "type": "integer", "minimum": 1 },
+    "explicitDisplayOrder": {
+      "anyOf": [
+        { "type": "number" },
+        { "type": "null" }
+      ]
+    },
+    "title": { "type": "string" },
+    "branchName": { "type": "string" },
+    "birthPlace": { "type": "string" },
+    "birthYear": { "type": "string" },
+    "deathYear": { "type": "string" },
+    "notes": { "type": "string" },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "source": {
+      "type": "object",
+      "required": ["original"],
+      "properties": {
+        "original": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": false
+}
