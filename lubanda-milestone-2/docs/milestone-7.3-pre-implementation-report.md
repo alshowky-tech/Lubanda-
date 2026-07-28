@@ -15,26 +15,26 @@
 | **Build Order position** | 7 of 11 |
 | **Pipeline stage** | Stage 9 — Place Labels |
 | **Module** | `core/labels/` |
-| **M7 stages** | `SOLVE_LABELS` (exists in `MILESTONE_7_STAGES` as of M7.1) |
+| **M7 stage label** | `SOLVE_LABELS` (exists in `MILESTONE_7_STAGES` as of M7.1) |
 
-### Scope boundary
+### Scope
 
-Milestone 7.3 performs **deterministic assignment only**. It selects exactly one candidate per person from the candidates already generated, validated, and scored by Milestone 7.2. It does **not** generate, validate, or score candidates. It does **not** implement the full LabelLayoutEngine contract — that is reserved for a later slice.
+Milestone 7.3 performs **deterministic assignment only**. It selects zero or one candidate per person from the candidates already generated, validated, and scored by Milestone 7.2. It does **not** generate, validate, or score candidates. Dynamic candidate-to-selected-placement conflict detection is IN scope and is distinct from M7.2 fixed-obstacle validation and from the M4.2 collision engine.
 
 ---
 
-## 2. Source Documents and Headings
+## 2. Source Documents
 
-| # | Document | Code | Heading / Section | Key Content |
-|---|---|---|---|---|
-| 1 | Label Solver (Layout and Labels) | LCS-LBL-003 | Full document | Ordered assignment with backtracking; hard rules; unresolved reason exposure |
-| 2 | Label and Stability Contracts | LCS-CON-005 | Full document | `LabelLayoutEngine.place()`, `IncrementalLayoutEngine`, `ConstraintManager` |
-| 3 | Bible: Label Layout Engine | LNGP-R3-06 | §1–§10 | Hard constraints, soft objectives, terminal labels, search |
-| 4 | End-to-End Solve Pseudocode | LCS-ALG-001 | Full text | `labels = LabelLayoutEngine.place(skeleton, graph)` |
-| 5 | Decision Priority | LCS-GOV-002 | Priority #3, Hard vs Soft | Collision avoidance > readability; hard rules are pass/fail |
-| 6 | Acceptance Gates | LCS-TST-005 | Gate 4 — Labels | Zero overlaps and minimum readability satisfied |
-| 7 | Canonical Pipeline | LCS-ARC-002 | Stage 9 — Place Labels | "Measure and place labels" |
-| 8 | Build Order | LCS-IMP-002 | Milestone 7 — Labels | "Implement real Arabic text measurement and **label candidate solver**" |
+| # | Code | Heading | Content |
+|---|---|---|---|
+| 1 | LCS-LBL-003 | Full | Ordered candidate assignment with backtracking; hard rules; unresolved reason exposure |
+| 2 | LCS-CON-005 | Full | `LabelLayoutEngine.place()`, `IncrementalLayoutEngine`, `ConstraintManager` |
+| 3 | LNGP-R3-06 | §1–§10 | Hard constraints, soft objectives, terminal labels, search |
+| 4 | LCS-ALG-001 | Full | `labels = LabelLayoutEngine.place(skeleton, graph)` |
+| 5 | LCS-GOV-002 | Priority #3, Hard vs Soft | Collision avoidance > readability; hard constraints pass/fail |
+| 6 | LCS-TST-005 | Gate 4 — Labels | Zero overlaps and minimum readability satisfied |
+| 7 | LCS-ARC-002 | Stage 9 | "Measure and place labels" |
+| 8 | LCS-IMP-002 | Milestone 7 | "Implement real Arabic text measurement and label candidate solver" |
 
 ---
 
@@ -44,278 +44,339 @@ Milestone 7.3 performs **deterministic assignment only**. It selects exactly one
 
 | Input | Source | Description |
 |---|---|---|
-| `SkeletonPlan` | M3 — Skeleton Growth | Approved skeleton (frozen, immutable) |
-| `SkeletonBranchMap` | M3 — computed | Branch ID → SkeletonBranch |
-| `GenealogyGraph` | M1/M2 — Import | Person data, child relationships |
-| `LabelConfig` | M1 — Configuration | `minimumFontSize`, `maximumRotationDegrees` |
-| `CandidateCollisionQuery` | M7.2 — CQ abstraction | Read-only obstacle query (branch envelopes, boundary, fixed labels) |
-| `TemplateBoundary: Polygon` | M2 — Territory | Outer boundary |
-| `TextMeasurementService` | M7.1 — Text Measurer | (immutable, used only for diagnostics) |
-| `GeneratedCandidatesResult` | M7.2 — Generator output | `allCandidates`, `personCandidateMap`, `diagnostics` |
+| `SkeletonPlan` | M3 | Approved skeleton (frozen, immutable) |
+| `SkeletonBranchMap` | M3 | Branch ID → SkeletonBranch |
+| `GenealogyGraph` | M1/M2 | Person data, child relationships |
+| `LabelConfig` | M1 | `minimumFontSize`, `maximumRotationDegrees` |
+| `LabelCollisionQuery` (see §7) | M7.3 | Read-only dynamic conflict abstraction (separate from M7.2 fixed-obstacle query) |
+| `GeneratedCandidatesResult` | M7.2 | `allCandidates`, `personCandidateMap`, `diagnostics` |
+| `CandidateCollisionQuery` (fixed obstacles) | M7.2 | Available but NOT used for dynamic checks |
 
 ### 3.2 Output
 
 ```ts
 interface LabelAssignmentResult {
-  readonly placements: readonly LabelPlacement[];      // one per person
+  readonly placements: readonly LabelPlacement[];
   readonly unplacedPersons: readonly UnresolvedLabelReason[];
   readonly metrics: LabelLayoutMetrics;
-  readonly deterministicFingerprint: string;
+  readonly deterministicFingerprint?: string;  // optional (see §10)
 }
 ```
 
 ### 3.3 Assignment rules
 
-- Each person with at least one VALID candidate receives exactly one placement.
-- The placement is selected from that person's VALID, scored candidates.
+- A person with at least one VALID candidate that does not conflict with already-placed candidates receives exactly one placement.
+- A person whose all VALID candidates conflict with already-placed placements receives an `UnresolvedLabelReason`.
 - The selection is deterministic and stable.
-- A person with zero VALID candidates receives an `UnresolvedLabelReason` with code `ALL_CANDIDATES_COLLIDE`.
-- A person with zero candidates of any status receives `NO_CANDIDATES_GENERATED`.
-- The assignment must not introduce new collisions with already-placed labels (label–label collision).
-- The assignment must respect all hard rules from LCS-LBL-003: no overlap, minimum font size, complete text visibility, correct person association, no crossing leader lines.
+- The assignment must not introduce new dynamic conflicts: label–label overlap, leader–label crossing, leader–leader crossing.
+- Fixed-obstacle conflicts (branch penetration, boundary violation) are already rejected by M7.2 validation and are not re-checked.
 
-### 3.4 Immutability guarantees
+### 3.4 Immutability
 
-- The `SkeletonPlan`, `GenealogyGraph`, and all branch/routing/collision inputs are never mutated.
-- The assignment function creates only new arrays/objects for its return value.
-- The output `LabelPlacement` objects are frozen.
-- `deterministicFingerprint` is a SHA-256 of canonical JSON of the placements and unplaced persons.
+- All inputs are never mutated.
+- The function creates only new arrays/objects for its return value.
+- Output `LabelPlacement` objects are frozen.
 
 ---
 
 ## 4. Conflict Graph
 
-### 4.1 Graph structure
+### 4.1 Definition
 
-```
-  Person                    Person
-    │                         │
-    ▼                         ▼
-Candidate A-1              Candidate B-1
-Candidate A-2              Candidate B-2
-Candidate A-3              Candidate B-3
-    │                         │
-    └──────────┬──────────────┘
-               ▼
-       Conflict Graph
-  (bipartite overlay edges)
-```
+The candidate conflict graph is defined as:
 
 - **Nodes:** Every VALID candidate from M7.2.
-- **Conflict edges:** A candidate A conflicts with candidate B if their placed bounds overlap (label–label conflict), or if A's leader line crosses B's bounds/label.
-- **No edge:** Candidates for the same person are never in conflict with each other (only one is selected).
-- **Fixed-obstacle edges:** Already handled by M7.2 validation; candidates entering the solver are already free of fixed-obstacle conflicts.
+- **Partitions:** Candidates are partitioned by person. At most one candidate may be selected from each partition (mutual exclusion through partition constraint, not through ordinary conflict edges).
+- **Conflict edges:** An undirected edge connects candidate A and candidate B (from different persons) when simultaneously placing both would violate a dynamic hard constraint (see §5).
 
-### 4.2 Graph properties
+```
+  Person A partition       Person B partition
+  ┌──────────────┐        ┌──────────────┐
+  │  A1 ─────────┼────────┤  B1          │
+  │  A2          │        │  B2 ─────────┼──┐
+  │  A3 ─────────┼────────┤  B3          │  │
+  └──────────────┘        └──────────────┘  │
+                                           │
+                                 Person C   │
+                                 partition  │
+                                 ┌──────────┘
+                                 │  C1
+                                 │  C2
+                                 │  C3
+                                 └─────────
+```
 
-- The graph is a unit-disc intersection graph in 2D space (bounds overlap).
-- Maximum degree is bounded by spatial density (not by person count).
-- For 1,500 persons × ~6 candidates ≈ 9,000 nodes.
-- Edge count is O(n × k) where k is the average number of overlapping candidates per cell, not O(n²).
+- Edges between partitions are labelled with the conflict type.
+- Edges within a partition are implicit (the partition constraint ensures exclusivity).
 
-### 4.3 Use in the solver
+### 4.2 Graph usage
 
-The solver does not explicitly build the conflict graph as a data structure. Instead, it checks label–label conflicts incrementally using `CandidateCollisionQuery.overlapsFixedLabel()` against the growing set of already-placed placements. This is equivalent to implicit conflict-graph traversal.
+The solver does **not** build the full conflict graph as a data structure. It performs incremental candidate-vs-placement checks as described in §7. The graph model exists for analysis and correctness reasoning only.
 
 ---
 
-## 5. Conflict Types
+## 5. Dynamic Conflict Types
 
-| Type | Description | Detected by | Resolution |
+### 5.1 Conflicts resolved by M7.2 (fixed obstacles — not in scope)
+
+The following are detected and rejected by M7.2 `LabelCandidateValidator`. The solver never sees these candidates:
+
+- Label bounds ↔ branch envelope (outside self-anchor zone)
+- Leader line ↔ branch envelope
+- Label bounds ↔ template boundary
+- Label bounds ↔ already-fixed label placements (from earlier pipeline stages)
+- Rotation exceeds `maximumRotationDegrees`
+- Non-finite geometry
+
+### 5.2 Conflicts resolved by M7.3 (dynamic — IN scope)
+
+| Type | Description | Detection | Hard constraint? |
 |---|---|---|---|
-| **Label–Label** | Two placements' bounds overlap | `overlapsFixedLabel()` | Skip candidate; try next; backtrack if impossible |
-| **Label–Branch** | Placement overlaps a branch envelope outside self-anchor zone | M7.2 validation (pre-solver) | Already excluded; solver never sees these |
-| **Leader–Branch** | Leader line crosses a branch envelope | M7.2 validation (pre-solver) | Already excluded; solver never sees these |
-| **Boundary** | Placement extends outside template | M7.2 validation (pre-solver) | Already excluded |
-| **Leader–Leader** | Two leader lines cross | Future extension | Deferred; requires segment–segment test between leader lines |
-| **Cartouche overlap** | Cartouche placement overlaps non-cartouche | Same as label–label | Handled by general overlap check |
-| **Terminal leaf overlap** | Leaf placement overlaps another label | Same as label–label | Handled by general overlap check |
+| **Label–Label bounds** | Candidate bounds overlap a selected placement's bounds | AABB overlap | Yes — LCS-LBL-003 "no overlap" |
+| **Candidate leader ↔ selected label bounds** | Candidate's leader line segment intersects a selected placement's AABB | Segment–AABB intersection | Yes — LCS-LBL-003 "no crossing leader lines" |
+| **Candidate bounds ↔ selected leader** | Candidate placement bounds overlap a selected placement's leader segment | AABB–segment intersection | Yes |
+| **Leader–leader crossing** | Candidate's leader line segment intersects a selected placement's leader line segment | Segment–segment intersection (PROPER or COLLINEAR_OVERLAP) | Yes — LCS-LBL-003 "no crossing leader lines" |
 
-### 5.1 Future extension points
+### 5.3 Endpoint-touch rules
 
-- Leader–leader crossing detection (add leader segments to overlap checks).
-- Branch–label clearance relaxation (re-score rather than hard reject).
-- Cartouche zone priority (cartouche placements get priority within their zone).
+- Touching at the same person's own anchor point is **exempt** (the leader connects to the person's own branch endpoint, which is on the boundary).
+- Touching at any other point is a hard violation (treated as PENETRATION with distance = 0).
+- Leader endpoint resting exactly on another leader endpoint without crossing is **allowed** (an ENDPOINT_TOUCH or COLLINEAR_TOUCH from segment intersection is not a crossing).
+- Leader endpoint resting exactly on another label's AABB boundary is **NOT allowed** (bounds overlap includes the boundary).
 
 ---
 
-## 6. Solver Alternatives
+## 6. Solver Strategy
 
-### 6.1 Comparison
+### 6.1 Selected strategy: deterministic greedy with bounded chronological backtracking
 
-| Approach | Deterministic | Complexity | Memory | Determinism | Suitability |
-|---|---|---|---|---|---|
-| **Greedy** | ✅ Yes (stable sort) | O(n log n + n·d) | O(n) | ✅ Stable ordering, no randomness | Good for sparse graphs |
-| **Priority queue** | ✅ Yes (FIFO tie-break) | O(n log n + n·d) | O(n) | ✅ Stable ordering | Equivalent to greedy with heap |
-| **Backtracking** (spec reference) | ✅ Yes (ordered backtracking) | O(n·b^d) worst case | O(n·k) | ✅ Deterministic search order | Required by LCS-LBL-003 |
-| **Branch-and-bound** | ✅ Yes | O(2^n) worst | O(n) | ✅ BFS with pruning | Overkill for labels |
-| **Maximum independent set** | ❌ NP-hard | Exponential | High | ❌ | Not suitable |
-| **Constraint satisfaction** | ✅ Yes | O(n²·k²) typical | O(n·k) | ✅ With fixed variable ordering | Equivalent to backtracking |
+This matches LCS-LBL-003 ("ordered candidate assignment with backtracking for congested regions") and is the single recommended approach.
 
-### 6.2 Recommendation: **Greedy with limited backtracking**
+### 6.2 Algorithm
 
-The specification (LCS-LBL-003) describes ordered candidate assignment with backtracking. The recommended approach is:
+```text
+placements = []
+backtrackStack = []
 
-1. **Sort persons by difficulty** (fewest candidates, largest area, highest local density, stable prior label first).
-2. **For each person, try their ranked VALID candidates in score order.** Pick the first that does not conflict with already-placed labels.
-3. **If none fits:** backtrack up to N labels (default 10) by releasing their placements and retrying.
-4. **If backtracking also fails:** record `BACKTRACK_EXHAUSTED` for this person and continue.
-
-This matches the spec's reference strategy while bounding worst-case runtime. Pure greedy (no backtracking) is the simplest correct implementation and is the recommended default; backtracking is added only when congested regions require it.
-
-| Aspect | Value |
-|---|---|
-| **Time (expected)** | O(n log n + n·d) — n people, d average candidates per person |
-| **Time (worst case)** | O(n·b·k) — b backtrack depth, k overlap checks per try |
-| **Memory** | O(n) for placements array + O(1) per person |
-| **Determinism** | ✅ Stable sort, deterministic tie-breaking, no random seeds |
-
-### 6.3 Target
-
-For 1,500 people with ~6 candidates each: ~9,000 candidates to evaluate, ~9,000 overlap checks in the greedy pass. Expected runtime well under 100ms in JavaScript.
-
----
-
-## 7. Determinism
-
-| Property | Mechanism |
-|---|---|
-| **Stable ordering** | Persons sorted by difficulty; candidates sorted by score, then family priority, then anchor distance, then candidate index |
-| **Stable tie-breaking** | Multi-key sort with no random fallback; lowest PersonId wins when all else is equal |
-| **Repeatability** | Same input always produces the same `placements[]` and `deterministicFingerprint` |
-| **Seed independence** | No pseudo-random generation used in assignment |
-| **Canonical ordering** | Placements sorted by person ID; fingerprint is SHA-256 of canonical JSON |
-
----
-
-## 8. Tie-Breaking (Complete Ordering)
-
-The complete deterministic ordering for assignment is:
-
-```
-Primary sort key:   generation (ascending — trunk labels first)
-Secondary key:      person difficulty (fewest candidates → most)
-Tertiary key:       candidate score (descending)
-Quaternary key:     family priority (ALIGNED → ABOVE → BELOW → LATERAL → LEAF → CARTOUCHE)
-Quinary key:        anchor distance from branch endpoint (ascending)
-Senary key:         candidate index within person (ascending)
-Septenary key:      person ID (lexicographic ascending)
+for person in personsOrderedByDifficulty:
+    for candidate in bestCandidatesForPerson(person):
+        if conflicts with any placement in placements:
+            continue
+        placements.push(candidate)
+        backtrackStack.push(person)
+        break
+    if no candidate placed:
+        while backtrackStack is not empty
+               and backtrackBudgetRemaining > 0:
+            prevPerson = backtrackStack.pop()
+            prevPlacement = remove placement for prevPerson
+            for nextCandidate in candidatesFor(prevPerson, after=prevPlacement):
+                if conflicts with placements:
+                    continue
+                placements.push(nextCandidate)
+                backtrackStack.push(prevPerson)
+                decrement backtrackBudgetRemaining
+                retry original person
+                break
+        if still not placed:
+            record BACKTRACK_EXHAUSTED for person
 ```
 
-This ordering is applied at two levels:
+### 6.3 Decision frame
 
-1. **Person ordering** for assignment iteration: by `(fewestCandidates, generation, personId)`.
-2. **Candidate ordering** within a person: by `(score desc, familyPriority, anchorDistance, candidateIndex)`.
+Each assignment of a candidate to a person creates a **decision frame** consisting of:
+- The person being assigned.
+- The selected candidate (with its bounds, anchor, leader geometry).
+- The resulting `placements` array state at that point.
 
-The family priority numeric mapping:
+### 6.4 Backtracking scope
 
-| Family | Priority |
-|---|---|
-| ALIGNED_WITH_BRANCH | 1 (highest) |
-| OFFSET_ABOVE_BRANCH | 2 |
-| OFFSET_BELOW_BRANCH | 3 |
-| LATERAL | 4 |
-| TERMINAL_LEAF | 5 |
-| CARTOUCHE_ZONE | 6 |
+When backtracking is triggered, the solver may reconsider **only the most recently placed persons** in LIFO order (chronological backtracking). It does **not** perform random restarts or global reordering.
 
-No ambiguity: every candidate has a unique position in the ordering (candidateIndex + personId guarantee uniqueness).
+### 6.5 Backtracking budget
+
+The backtracking budget is supplied through `LabelConfig` (the `maximumBacktrackDepth` field, which does not yet exist and would be added as part of M7.3). It is a configurable positive integer. No hard-coded default is defined by the specification. An engineering decision will set a default (proposed: 10) before implementation.
+
+If the configured budget is exhausted without finding a valid assignment, the solver records `BACKTRACK_EXHAUSTED` for the current person and **continues** to the next person without retrying further.
 
 ---
 
-## 9. Complexity Analysis
+## 7. Dynamic Conflict Abstraction
 
-### 9.1 Time complexity
+Separate from M7.2's `CandidateCollisionQuery` (which tests fixed obstacles), M7.3 requires a read-only abstraction for dynamic candidate-vs-placement checks:
 
-| Phase | Operation | Cost |
+```ts
+interface LabelCollisionQuery {
+  /** True if candidate's bounds overlap placed bounds. */
+  overlapsPlacedLabel(candidateBounds: Bounds, placement: LabelPlacement): boolean;
+
+  /** True if candidate's leader segment intersects placed bounds.
+   *  Leader endpoint at own anchor is exempt. */
+  leaderCrossesPlacedLabel(
+    leaderStart: Vec2, leaderEnd: Vec2, placement: LabelPlacement, ownAnchor?: Vec2,
+  ): boolean;
+
+  /** True if candidate's bounds intersect a placed leader segment.
+   *  See leaderCrossesPlacedLabel for anchor exemption. */
+  labelCrossesPlacedLeader(
+    candidateBounds: Bounds, placedLeaderStart: Vec2, placedLeaderEnd: Vec2,
+  ): boolean;
+
+  /** True if two leader segments properly intersect or collinearly overlap.
+   *  Endpoint-touch without crossing is allowed. */
+  leadersCross(
+    a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2, ownAnchorA?: Vec2, ownAnchorB?: Vec2,
+  ): boolean;
+}
+```
+
+This abstraction:
+- Does NOT replace or duplicate the M4.2 collision engine.
+- Does NOT test branch envelopes, templates, or fixed obstacles (those are M7.2).
+- Is implementable using the existing `boundsOverlap` and `intersectSegments` geometry primitives from M3.
+- Is fully deterministic.
+
+---
+
+## 8. Complete Ordering Tuples
+
+### 8.1 Person ordering (determines iteration order)
+
+```
+(validCandidateCount ascending,
+ dynamicConflictDegree descending,
+ generation ascending,
+ personId ascending)
+```
+
+| Key | Type | Rationale |
 |---|---|---|
-| Sort persons by difficulty | Stable sort of n persons | O(n log n) |
-| For each person, try candidates | n × d overlap checks | O(n·d) |
-| Each overlap check | AABB–AABB + leader–branch | O(b) where b = average branch count in spatial query |
-| Backtracking (per trigger) | Release k placements, retry k persons | O(k·d) |
-| **Expected total** | | **O(n log n + n·d·b)** |
-| **Worst case** (dense backtrack) | | **O(n·d·b·k)** |
+| `validCandidateCount` | integer | Fewest candidates first (LCS-LBL-003: "fewest candidates"). Persons with fewer options get priority. |
+| `dynamicConflictDegree` | integer | Estimated number of already-placed placements this person's candidates overlap. Higher → more constrained → earlier. Estimated by sampling. |
+| `generation` | integer | Ancestors before descendants. Root-adjacent labels placed first. |
+| `personId` | `PersonId` | Lexicographic; fully deterministic tie-break. |
 
-### 9.2 Space complexity
+### 8.2 Candidate ordering within one person (determines selection order)
 
-| Data | Size |
-|---|---|
-| Input candidates | O(n·d) |
-| Placements array | O(n) |
-| Person–candidate index | O(n) |
-| Unresolved reasons | O(n) |
-| Backtrack stack | O(k) |
-| **Total** | **O(n·d)** |
+```
+(score descending,
+ familyPriority ascending,
+ leaderLength ascending,
+ rotationMagnitude ascending,
+ candidateIndex ascending,
+ candidateId ascending)
+```
 
-### 9.3 Target
+| Key | Type | Source | Rationale |
+|---|---|---|---|
+| `score` | number \| null | M7.2 `LabelCandidate.score` | Best scored candidate first. |
+| `familyPriority` | integer | Derived from `LabelCandidateFamily` (ALIGNED=1, ABOVE=2, BELOW=3, LATERAL=4, LEAF=5, CARTOUCHE=6) | Prefer aligned labels. |
+| `leaderLength` | number | M7.2 `LabelCandidate.leaderLength` | Shorter leaders preferred. |
+| `rotationMagnitude` | number | `Math.abs(LabelCandidate.rotation)` | Less rotation preferred. |
+| `candidateIndex` | integer | Position within the person's candidate array | Stable ordering. |
+| `candidateId` | string | Generated during M7.2 (new field: `id: string`) | Final unambiguous tie-break. |
 
-For 1,500 people × 6 candidates = 9,000 candidates:
-- Sort: ~15,000 comparisons
-- Greedy pass: ~9,000 overlap checks
-- Each overlap check: ~10–50 bounding box comparisons (spatial hash)
-- Expected total: ~200,000 AABB comparisons (under 50ms in JS)
+*Note:* `candidateId` is a new field required on `LabelCandidate`. It is a deterministic sequential identifier (e.g., `"candidate:p1:3"`) produced during M7.2 generation.
 
 ---
 
-## 10. Failure Behaviour
+## 9. Failure and Completeness
 
-### 10.1 Diagnostics
+### 9.1 Partial assignment permitted
 
-Every person who cannot be placed receives an `UnresolvedLabelReason`:
+The assignment function does NOT abort on the first failure. It continues placing remaining persons. The result may be **partially complete**: some persons receive placements, others receive `UnresolvedLabelReason`.
+
+### 9.2 Completeness status
+
+```ts
+interface LabelAssignmentResult {
+  readonly placements: readonly LabelPlacement[];          // placed persons
+  readonly unplacedPersons: readonly UnresolvedLabelReason[];  // unplaced persons
+  readonly metrics: LabelLayoutMetrics;
+  readonly deterministicFingerprint?: string;
+}
+```
+
+`placements` contains zero or one entry per person. The number of entries may be less than the number of persons in the skeleton. This is NOT a contradiction with "one per person" — it is "at most one per person, possibly none".
+
+### 9.3 Unresolved reasons
 
 | Code | Condition |
 |---|---|
-| `NO_CANDIDATES_GENERATED` | Person has no candidates at all (M7.2 produced none) |
-| `ALL_CANDIDATES_COLLIDE` | Person has candidates, but all conflict with already-placed labels |
-| `BACKTRACK_EXHAUSTED` | Backtracking attempted but no assignment found within the backtrack limit |
-| `GEOMETRY_RELAXATION_FAILED` | (Future) local relaxation attempted but failed — deferred to M8 |
-| `TEXT_TOO_LONG` | Text measurement exceeds the configured maximum width |
-| `FONT_MISSING` | Configured font could not be loaded |
+| `NO_CANDIDATES_GENERATED` | M7.2 produced no candidates for this person |
+| `ALL_CANDIDATES_COLLIDE` | All VALID candidates conflict with already-placed placements |
+| `BACKTRACK_EXHAUSTED` | Backtracking budget consumed, no conflict-free assignment found |
+| `GEOMETRY_RELAXATION_FAILED` | Deferred to M8 (stub returns this code) |
 
-### 10.2 Partial failure
+### 9.4 Acceptance Gate 4 interaction
 
-The assignment function does NOT abort on the first failure. It continues placing remaining persons and collects all unresolved reasons into the output. The `LabelLayoutResult.accepted` flag is `true` only when `unplacedPersons.length === 0`.
+Gate 4 ("Zero overlaps and minimum readability satisfied") applies to the accepted layout after all stages (including M8 relaxation). A partial M7.3 result is **not** a failure of Gate 4 — it is an intermediate result that may be resolved by geometry relaxation (M8) or rejected at final validation. The solver's `accepted` flag (if present) reflects whether all persons could be placed, but the pipeline is responsible for escalating partial results.
 
-### 10.3 No silent failures
+### 9.5 No silent failures
 
-- Every unresolved person is recorded with a structured reason.
-- The `deterministicFingerprint` covers placements and unresolved reasons alike.
-- Downstream consumers (M7.4 Validator, M8 Stability, M10 Visual) can distinguish partial from complete failure.
+Every unplaced person is recorded with a structured, machine-readable reason. Downstream consumers can distinguish complete from partial results.
 
 ---
 
-## 11. Interaction with Future Milestones
+## 10. Determinism and Fingerprinting
 
-| Milestone | Relationship | Boundary |
+| Property | Mechanism |
+|---|---|
+| **Stable person order** | Multi-key tuple per §8.1 |
+| **Stable candidate order** | Multi-key tuple per §8.2 |
+| **Deterministic conflict detection** | `overlapsPlacedLabel`, `leaderCrossesPlacedLabel`, `leadersCross` return identical results for identical inputs |
+| **Fingerprint** | Optional. Structural equality of the ordered output arrays (`placements` sorted by `personId`, `unplacedPersons` sorted by `personId`) is sufficient to prove determinism. SHA-256 is NOT required. |
+
+### 10.1 Fingerprint is optional
+
+No authoritative specification requires `deterministicFingerprint` in the assignment output. Gate 6 (Determinism) is satisfied by structural comparison of sorted output. A cryptographic SHA-256 fingerprint is not needed for determinism proof and introduces an unnecessary dependency. It MAY be included if the downstream `LabelLayoutEngine` contract requires it, but M7.3 does not mandate it.
+
+---
+
+## 11. Complexity Analysis
+
+### 11.1 Time
+
+| Phase | Cost | Notes |
 |---|---|---|
-| **M7.4 — Layout Validation** | Consumes M7.3 placements; validates final output | M7.3 produces placements; M7.4 validates them |
-| **M8 — Stability** | Consumes M7.3 placements as `previousLayout` | M8 adds incremental re-solve; M7.3 is the initial solve |
-| **M10 — Visual Layer** | Consumes M7.3 placements for label rendering | M10 never modifies placement geometry |
-| **M11 — Export** | Consumes placements for SVG/PDF label output | M11 never modifies label positions |
+| Sort persons by difficulty | O(n log n) | n = person count (≤ 1,500) |
+| Greedy pass: try candidates | O(n · d · q) | d = avg candidates/person (≈6), q = dynamic conflict check cost (≈4 AABB/segment tests) |
+| Backtracking (per trigger) | O(k · d · q) | k = backtrack depth (configurable) |
+| **Expected total** | **O(n log n + n·d·q)** | ≈ 1,500 × 6 × 4 ≈ 36,000 geometric tests |
+| **Worst case (dense backtrack)** | **O(n · k · d · q)** | Every person triggers backtracking of depth k |
 
-### 11.1 No scope leakage
+*Note on dynamic queries:* Each `overlapsPlacedLabel` check compares one candidate against the current placements array. The placements array grows up to O(n). In the greedy pass this is O(n²) in worst case if every new candidate is checked against all existing placements. This can be bounded by spatial partitioning: group placements by spatial cell and check only placements in overlapping cells. The O(n·d·q) estimate above assumes such partitioning.
 
-- M7.3 does NOT implement `LabelLayoutEngine.place()` — that is the full orchestration that will combine M7.1 (measure) + M7.2 (generate/score) + M7.3 (assign) + M7.4 (validate). The full `place()` implementation is deferred until M7.4 completes.
-- M7.3 does NOT implement incremental re-solve — that is M8.
-- M7.3 does NOT implement geometry relaxation — that is M8.
-- M7.3 does NOT implement rendering, SVG, or export — those are M10/M11.
-- M7.3 does NOT re-implement any M7.2 logic (generation, validation, scoring) — those are complete.
+### 11.2 Space
+
+| Data | Size |
+|---|---|
+| Placements array | O(n) |
+| Backtrack stack | O(k) |
+| Partition index (optional) | O(n) |
+| **Total** | **O(n)** |
+
+### 11.3 Performance targets (unverified)
+
+The following are **unverified performance targets requiring benchmark evidence** before acceptance:
+
+> For 1,500 persons × 6 candidates: expected greedy pass complete in under 100ms in JavaScript on target hardware.
+>
+> Backtracking depth of 10 adds at most 100ms additional in congested regions.
+
+These targets have NOT been benchmarked and must be verified during implementation.
 
 ---
 
-## 12. Traceability
+## 12. M7.4 Boundary
 
-| # | Decision | Source | Justification |
-|---|---|---|---|
-| T1 | One placement per person | LCS-LBL-003, LNGP-R3-06 §1 | "Place person names" — each person gets one label |
-| T2 | Greedy with limited backtracking | LCS-LBL-003 | "Ordered candidate assignment with backtracking" |
-| T3 | Backtrack depth default = 10 | M7.2 pre-implementation report §13.2 | Configurable limit per approved decision |
-| T4 | Label–label conflict detection via `overlapsFixedLabel` | M7.2 `CandidateCollisionQuery` interface | Reuses existing read-only abstraction |
-| T5 | No fixed-obstacle re-validation | M7.2 | Already validated by `LabelCandidateValidator` |
-| T6 | Deterministic fingerprint SHA-256 | LCS-TST-005 Gate 6 | Repeated runs serialize identically |
-| T7 | Stable sort by multi-key ordering | LCS-GOV-002 | No randomness; deterministic tie-breaking |
-| T8 | BOUNDARY_VIOLATION separated from BRANCH_PENETRATION | M7.2 `LabelCandidateValidator` | Boundary violations use separate code |
-| T9 | Partial failure with unresolved reasons | LCS-LBL-003 | "The solver MUST expose unresolved candidate reasons" |
-| T10 | `deterministicFingerprint` covers failures | LCS-TST-005 Gate 6 | Determinism includes failure modes |
+No authoritative project document defines "M7.4 — Layout Validation" as a separate milestone. The `LabelLayoutEngine.place()` contract (LCS-CON-005) is the full orchestration that will eventually combine M7.1 measurement + M7.2 generation/validation/scoring + M7.3 assignment + final validation. Whether final validation becomes a separate slice (M7.4) or is included in M7.3 is outside this document's scope.
+
+M7.3 MUST:
+- Expose a usable `assignCandidates()` API that produces `LabelAssignmentResult`.
+- NOT depend on any undefined future stage for its own correctness.
+
+If a future M7.4 slice is defined, it will consume M7.3's output and validate it. M7.3 is self-contained.
 
 ---
 
@@ -323,35 +384,51 @@ The assignment function does NOT abort on the first failure. It continues placin
 
 Milestone 7.3 will NOT implement:
 
-- ❌ Label rendering
-- ❌ SVG, PNG, PDF, or any export format
-- ❌ Skeleton geometry generation or modification
-- ❌ Branch routing or re-routing
-- ❌ Candidate generation (M7.2 complete)
-- ❌ Candidate validation against fixed obstacles (M7.2 complete)
-- ❌ Candidate scoring (M7.2 complete)
-- ❌ Text measurement (M7.1 complete)
-- ❌ Collision index or collision engine (M4.2 complete)
+- ❌ Candidate generation (M7.2)
+- ❌ Fixed-obstacle candidate validation (M7.2)
+- ❌ Candidate scoring (M7.2)
+- ❌ Text measurement, shaping, or bidi processing (M7.1)
+- ❌ Branch routing or skeleton geometry changes (M3, M4.1)
+- ❌ Collision engine or collision index (M4.2)
+- ❌ Label rendering or visual output (M10)
+- ❌ SVG, PNG, PDF, or any export format (M11)
+- ❌ Incremental reflow or stability constraints (M8)
+- ❌ Geometry relaxation (M8)
+- ❌ Prior-layout scoring (M8)
 - ❌ AI style analysis or AI-assisted placement
-- ❌ Interactive label dragging or repositioning (UI)
-- ❌ Prior-layout stability scoring (M8)
-- ❌ Incremental reflow or re-solving (M8)
-- ❌ The full `LabelLayoutEngine.place()` orchestration (deferred to M7.4)
+- ❌ Interactive UI (label dragging, repositioning)
+- ❌ The full `LabelLayoutEngine.place()` orchestration (deferred; see §12)
 
 ---
 
-## 14. Recommended Implementation Order
+## 14. Traceability
 
-1. Define `LabelAssignmentInput` type (wraps `GeneratedCandidatesResult` + `CandidateCollisionQuery` + `LabelConfig` + `TemplateBoundary`).
-2. Implement `buildPersonDifficultyOrder()` — stable sort of persons by candidate count, generation, and person ID.
-3. Implement `selectBestCandidate(person, candidates, fixedPlacements)` — iterate ranked VALID candidates, test `overlapsFixedLabel`, return first non-conflicting.
-4. Implement `assignCandidates()` — iterate difficulty-ordered persons, call `selectBestCandidate`, accumulate placements and unresolved.
-5. Implement `backtrack()` — when no candidate fits, release last N placements and retry the stuck person.
-6. Implement `computeFingerprint()` — SHA-256 of canonical JSON of the result.
-7. Implement `resolveLocalRelaxationRequest` stub — deferred to M8 (returns `GEOMETRY_RELAXATION_FAILED`).
-8. Unit tests: assignment, tie-breaking, backtracking, failure cases.
-9. Property tests: deterministic replay, valid score range, no skipped persons with valid candidates.
-10. Integration test: M7.2 candidates → M7.3 assignment → validated placements.
+| # | Decision | Source |
+|---|---|---|
+| T1 | At most one placement per person | LCS-LBL-003, LNGP-R3-06 §1 |
+| T2 | Deterministic greedy with bounded chronological backtracking | LCS-LBL-003 |
+| T3 | Backtrack budget from `LabelConfig.maximumBacktrackDepth` | Engineering decision; no default in spec |
+| T4 | Label–Label conflict via `overlapsPlacedLabel` | §7 this report |
+| T5 | Leader–leader crossing via `leadersCross` | LCS-LBL-003 "no crossing leader lines" |
+| T6 | Separate person-ordering and candidate-ordering tuples | §8 this report |
+| T7 | Partial assignment permitted | §9 this report |
+| T8 | No hard-coded fingerprint; structural equality sufficient | LCS-TST-005 Gate 6 |
+| T9 | Dynamic conflict abstraction separate from fixed-obstacle query | §7 this report |
+| T10 | `candidateId` field needed on `LabelCandidate` | §8.2 this report |
+
+---
+
+## 15. Recommended Implementation Order
+
+1. Add `candidateId: string` field to `LabelCandidate` type (M7.2 generation).
+2. Define `LabelCollisionQuery` interface (§7).
+3. Implement core geometric checks using existing `boundsOverlap`, `intersectSegments` (M3 primitives).
+4. Implement `buildPersonOrder()` — multi-key sort per §8.1.
+5. Implement `buildCandidateOrder()` — multi-key sort per §8.2.
+6. Implement `assignCandidates()` — greedy pass with chronological backtracking (§6).
+7. Unit tests: assignment, tie-breaking, backtracking, failure cases.
+8. Property tests: deterministic replay, partial completion, no silent failures.
+9. Integration test: M7.2 candidates → M7.3 assignment.
 
 ---
 
