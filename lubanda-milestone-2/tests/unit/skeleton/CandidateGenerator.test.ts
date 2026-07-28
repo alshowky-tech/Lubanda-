@@ -40,6 +40,7 @@ const makeInput = (overrides: Partial<CandidateGenerationInput> = {}): Candidate
   config: DEFAULT_ENGINE_CONFIGURATION.skeleton,
   seed: 42,
   existingBranchBounds: [],
+  existingCurveSamples: [],
   skipParentBounds: false,
   relaxedTerritoryCheck: false,
   candidateCount: 12,

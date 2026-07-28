@@ -10,6 +10,7 @@ import { roundDeterministic, stableUnit } from "../determinism/numeric.js";
 import { distance, lerp, normalize, subtract } from "../geometry/vec2.js";
 import { boundsFromPoints } from "../geometry/bounds.js";
 import { classifyPointInPolygon } from "../geometry/polygon.js";
+import { evaluateCubicBezier, sampleCubicBezier } from "../geometry/bezier.js";
 import type { CubicBezier, Vec2, Bounds, Polygon } from "../geometry/types.js";
 import type { Person } from "../genealogy/types.js";
 import { buildAttractorField } from "./AttractorField.js";
@@ -139,6 +140,7 @@ export class DeterministicSkeletonGrowthEngine
     const nodes = new Map<string, SkeletonNode>();
     const branches = new Map<string, SkeletonBranch>();
     const allBranchBounds: Bounds[] = [];
+    const allCurveSamples: Vec2[][] = [];
     const mappedJunctions: MappedJunction[] = [];
     let totalInvalidCandidates = 0;
     let totalRejectedCandidates = 0;
@@ -244,6 +246,7 @@ export class DeterministicSkeletonGrowthEngine
       };
       branches.set(trunkBranchId, trunkBranch);
       trunkSegmentIds.push(trunkBranchId);
+      allCurveSamples.push([...sampleCubicBezier(trunkSegmentCurve, { tolerance: 4, maxSubdivisionDepth: 10 })]);
 
       const prevNode = nodes.get(previousTrunkNodeId)!;
       nodes.set(previousTrunkNodeId, {
@@ -334,6 +337,7 @@ export class DeterministicSkeletonGrowthEngine
       };
       branches.set(finalBranchId, finalBranch);
       trunkSegmentIds.push(finalBranchId);
+      allCurveSamples.push([...sampleCubicBezier(finalCurve, { tolerance: 4, maxSubdivisionDepth: 10 })]);
 
       const prevNode = nodes.get(previousTrunkNodeId)!;
       nodes.set(previousTrunkNodeId, {
@@ -457,6 +461,7 @@ export class DeterministicSkeletonGrowthEngine
         config: input.configuration,
         seed: input.seed + skeletonDepth * 13 + branches.size * 7,
         existingBranchBounds: existingBounds,
+        existingCurveSamples: allCurveSamples,
         skipParentBounds: excludeBoundsCount > 0,
         relaxedTerritoryCheck: relaxedTerritory,
         candidateCount: input.configuration.candidateCount,
@@ -560,6 +565,7 @@ export class DeterministicSkeletonGrowthEngine
       };
       branches.set(branchId, branch);
       allBranchBounds.push(...branchBounds(branch));
+      allCurveSamples.push([...sampleCubicBezier(branchCurve, { tolerance: 4, maxSubdivisionDepth: 10 })]);
 
       addDiagnostic(
         "RECURSIVE_GROWTH",
@@ -590,20 +596,21 @@ export class DeterministicSkeletonGrowthEngine
         const childDir = childDirections[childIndex] ?? direction;
 
         // If the child starts at an interior point of this branch, create
-        // a real BRANCH_SPLIT node. Otherwise start from our end node.
+        // a real BRANCH_SPLIT node at a point ON THE PARENT BEZIER CURVE.
+        // Otherwise start from the parent's end node.
         let childStartNodeId: string;
         let childStartPoint: Vec2;
 
         if (children.length > 1) {
-          // Multiple children — create split nodes at distributed positions
+          // Evaluate on the actual parent cubic Bezier at parameter t
           const t = 0.55 + (childIndex / Math.max(1, children.length)) * 0.4;
-          childStartPoint = lerp(startPoint, endPoint, t);
+          childStartPoint = evaluateCubicBezier(branchCurve, t);
           const splitNodeId = nextNodeId("branch-split");
           const splitNode: SkeletonNode = {
             id: splitNodeId,
             point: childStartPoint,
             kind: "BRANCH_SPLIT",
-            incomingBranchId: null,
+            incomingBranchId: branchId,
             outgoingBranchIds: [],
             ownerLineageRootId: personId,
           };

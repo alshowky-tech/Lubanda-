@@ -229,6 +229,7 @@ export interface CandidateGenerationInput {
   readonly config: SkeletonConfig;
   readonly seed: number;
   readonly existingBranchBounds: readonly Bounds[];
+  readonly existingCurveSamples: readonly (readonly Vec2[])[];  // sampled points for narrow-phase intersection
   readonly skipParentBounds: boolean;     // skip parent chain bounds from intersection check
   readonly relaxedTerritoryCheck: boolean; // tolerate start outside territory (trunk junction entry)
   readonly candidateCount: number;

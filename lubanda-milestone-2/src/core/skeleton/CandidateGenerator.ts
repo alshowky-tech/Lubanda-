@@ -1,12 +1,10 @@
 import { classifyPointInPolygon } from "../geometry/polygon.js";
-import type { Polygon, Vec2, CubicBezier, Bounds } from "../geometry/types.js";
+import type { Polygon, Vec2, CubicBezier } from "../geometry/types.js";
 import { distance, lerp, normalize, subtract } from "../geometry/vec2.js";
 import { sampleCubicBezier } from "../geometry/bezier.js";
-import { boundsOverlap } from "../geometry/bounds.js";
+import { intersectSegments } from "../geometry/segments.js";
 import { stableUnit, roundDeterministic } from "../determinism/numeric.js";
-import {
-  computeAttractorForce,
-} from "./AttractorField.js";
+import { computeAttractorForce } from "./AttractorField.js";
 import type {
   BranchCandidate,
   BranchRejectionReason,
@@ -20,6 +18,8 @@ const defaultSamplingOptions = Object.freeze({
   tolerance: 0.5,
   maxSubdivisionDepth: 12,
 });
+const BEZIER_SAMPLING = Object.freeze({ tolerance: 4, maxSubdivisionDepth: 10 });
+const EPSILON = 1e-7;
 
 const bezierLength = (curve: CubicBezier): number => {
   const points = sampleCubicBezier(curve, defaultSamplingOptions);
@@ -52,55 +52,89 @@ const computeMaxCurvature = (curve: CubicBezier): number => {
   return maxCurvature;
 };
 
-const curveBounds = (curve: CubicBezier): Bounds => {
-  const points = sampleCubicBezier(curve, defaultSamplingOptions);
-  let minX = points[0]?.x ?? 0;
-  let minY = points[0]?.y ?? 0;
-  let maxX = minX;
-  let maxY = minY;
-  for (const point of points) {
-    minX = Math.min(minX, point.x);
-    minY = Math.min(minY, point.y);
-    maxX = Math.max(maxX, point.x);
-    maxY = Math.max(maxY, point.y);
-  }
-  return { minX, minY, maxX, maxY };
-};
+// ── Real narrow-phase intersection check ──────────────────────────────
+// AABB is broad phase only. For overlapping bounds, tests sampled Bezier
+// polyline segments using deterministic segment intersection.
 
-const curveIntersectsAnyBounds = (
-  curve: CubicBezier,
-  existingBounds: readonly Bounds[],
+const curveCurveIntersect = (
+  candidateCurve: CubicBezier,
+  existingSamples: readonly (readonly Vec2[])[],
   skipParent: boolean,
 ): boolean => {
-  if (existingBounds.length === 0) return false;
-  const bounds = curveBounds(curve);
-  // When skipParent is true, exclude the last entry (the immediate parent's bounds)
-  const limit = skipParent ? existingBounds.length - 1 : existingBounds.length;
-  for (let i = 0; i < limit; i += 1) {
-    if (boundsOverlap(bounds, existingBounds[i]!, 4)) return true;
+  if (existingSamples.length === 0) return false;
+  const candidateSamples = sampleCubicBezier(candidateCurve, BEZIER_SAMPLING);
+  if (candidateSamples.length < 2) return false;
+
+  // When skipParent is true, exclude the last entry (immediate parent)
+  const limit = skipParent ? existingSamples.length - 1 : existingSamples.length;
+  for (let e = 0; e < limit; e += 1) {
+    const existing = existingSamples[e]!;
+    if (existing.length < 2) continue;
+
+    // Broad phase: AABB
+    const eMinX = Math.min(...existing.map((p) => p.x));
+    const eMinY = Math.min(...existing.map((p) => p.y));
+    const eMaxX = Math.max(...existing.map((p) => p.x));
+    const eMaxY = Math.max(...existing.map((p) => p.y));
+    const cMinX = Math.min(...candidateSamples.map((p) => p.x));
+    const cMinY = Math.min(...candidateSamples.map((p) => p.y));
+    const cMaxX = Math.max(...candidateSamples.map((p) => p.x));
+    const cMaxY = Math.max(...candidateSamples.map((p) => p.y));
+    if (cMaxX < eMinX - 4 || eMaxX < cMinX - 4 || cMaxY < eMinY - 4 || eMaxY < cMinY - 4) continue;
+
+    // Narrow phase: segment intersection on sampled polylines
+    for (let li = 0; li < candidateSamples.length - 1; li += 1) {
+      const la = candidateSamples[li]!;
+      const lb = candidateSamples[li + 1]!;
+      for (let ri = 0; ri < existing.length - 1; ri += 1) {
+        const ra = existing[ri]!;
+        const rb = existing[ri + 1]!;
+        const segResult = intersectSegments(la, lb, ra, rb, { epsilon: EPSILON });
+        if (segResult.kind === "PROPER" || segResult.kind === "COLLINEAR_OVERLAP") {
+          return true;
+        }
+      }
+    }
   }
   return false;
 };
+
+// ── Territory containment check ──────────────────────────────────────
+// For normal branches: every sampled point must be inside the territory.
+// For relaxed (major corridor entry): find the first entry point, then
+// all subsequent points must remain inside (no re-exit).
 
 const curveRespectsTerritory = (
   curve: CubicBezier,
   polygon: Polygon,
   relaxed: boolean,
 ): boolean => {
-  const points = sampleCubicBezier(curve, { tolerance: 4, maxSubdivisionDepth: 10 });
+  const points = sampleCubicBezier(curve, BEZIER_SAMPLING);
+  if (points.length === 0) return false;
+
   if (relaxed) {
-    // For major lineage branches starting at trunk junction, the start may
-    // be outside the territory. Only check that the last 50% enters and stays
-    // inside the territory boundary.
-    const midPoint = Math.floor(points.length / 2);
-    for (let i = midPoint; i < points.length; i += 1) {
-      const point = points[i]!;
-      if (classifyPointInPolygon(point, polygon) === "OUTSIDE") {
-        return false;
+    // Find the first point inside the territory
+    let entryIndex = -1;
+    for (let i = 0; i < points.length; i += 1) {
+      if (classifyPointInPolygon(points[i]!, polygon) !== "OUTSIDE") {
+        entryIndex = i;
+        break;
+      }
+    }
+    // If we never entered at all, check if at least the last point tries
+    if (entryIndex < 0) {
+      return classifyPointInPolygon(points[points.length - 1]!, polygon) !== "OUTSIDE";
+    }
+    // Once entered, all remaining points must stay inside
+    for (let i = entryIndex; i < points.length; i += 1) {
+      if (classifyPointInPolygon(points[i]!, polygon) === "OUTSIDE") {
+        return false; // re-exited
       }
     }
     return true;
   }
+
+  // Normal check: every sampled point must be inside
   return points.every(
     (point) => classifyPointInPolygon(point, polygon) !== "OUTSIDE",
   );
@@ -112,7 +146,7 @@ const generateControlPoint = (
   start: Vec2,
   end: Vec2,
   startDirection: Vec2 | null,
-  fragment: number,     // 0 = near start, 1 = near end
+  fragment: number,
   seed: number,
   personId: string,
   directionBias: number,
@@ -121,16 +155,13 @@ const generateControlPoint = (
   const along = lerp(start, end, 0.2 + fragment * 0.6);
   const midpoint = lerp(start, end, 0.5);
 
-  // Organic jitter
   const jitterX = (stableUnit(`cp-jx-${personId}-${fragment}-${seed}`, seed) * 2 - 1) * 48;
   const jitterY = (stableUnit(`cp-jy-${personId}-${fragment}-${seed}`, seed) * 2 - 1) * 48;
 
-  // Attractor influence at midpoint
   const attractorForce = computeAttractorForce(midpoint, attractorField, seed);
   const attractorOffsetX = attractorForce.x * 36;
   const attractorOffsetY = attractorForce.y * 36;
 
-  // Directional bias
   let dirBiasX = 0;
   let dirBiasY = 0;
   if (startDirection !== null) {
@@ -161,36 +192,22 @@ export const generateBranchCandidates = (
   for (let index = 0; index < input.candidateCount; index += 1) {
     const seed = input.seed + index * 7 + 3;
     const p1 = generateControlPoint(
-      input.startPoint,
-      input.endPoint,
-      input.startDirection,
-      0,
-      seed,
-      personId,
+      input.startPoint, input.endPoint, input.startDirection,
+      0, seed, personId,
       0.6 + (stableUnit(`ds-${index}`, seed) * 0.4),
       input.attractors,
     );
     const p2 = generateControlPoint(
-      input.startPoint,
-      input.endPoint,
-      input.startDirection,
-      1,
-      seed + 3,
-      personId,
+      input.startPoint, input.endPoint, input.startDirection,
+      1, seed + 3, personId,
       0.4 + (stableUnit(`ds2-${index}`, seed + 1) * 0.4),
       input.attractors,
     );
 
     const curve: CubicBezier = {
       p0: { x: input.startPoint.x, y: input.startPoint.y },
-      p1: {
-        x: roundDeterministic(p1.x, input.roundingDecimalPlaces),
-        y: roundDeterministic(p1.y, input.roundingDecimalPlaces),
-      },
-      p2: {
-        x: roundDeterministic(p2.x, input.roundingDecimalPlaces),
-        y: roundDeterministic(p2.y, input.roundingDecimalPlaces),
-      },
+      p1: { x: roundDeterministic(p1.x, input.roundingDecimalPlaces), y: roundDeterministic(p1.y, input.roundingDecimalPlaces) },
+      p2: { x: roundDeterministic(p2.x, input.roundingDecimalPlaces), y: roundDeterministic(p2.y, input.roundingDecimalPlaces) },
       p3: { x: input.endPoint.x, y: input.endPoint.y },
     };
 
@@ -213,7 +230,8 @@ export const generateBranchCandidates = (
         rejectionReasons.push("TERRITORY_BOUNDARY_CROSSED");
       }
     }
-    if (curveIntersectsAnyBounds(curve, input.existingBranchBounds, input.skipParentBounds)) {
+    // 💥 Real narrow-phase collision: segment intersection on sampled curves
+    if (curveCurveIntersect(curve, input.existingCurveSamples, input.skipParentBounds)) {
       rejectionReasons.push("BRANCH_INTERSECTION");
     }
 
@@ -269,42 +287,28 @@ export const scoreBranchCandidates = (
   const scored: BranchCandidate[] = candidates.map((candidate) => {
     if (!candidate.valid) return candidate;
 
-    // 1. Smoothness score (lower curvature = higher score)
     const smoothnessScore = 1 - candidate.maxCurvature / (maxCurvature * 1.1);
-
-    // 2. Naturalness score (moderate curvature is natural)
     const curvRatio = candidate.maxCurvature / maxCurvature;
     const naturalnessScore = 1 - Math.abs(curvRatio - 0.35) * 1.5;
 
-    // 3. Direction continuity (consistency with parent direction)
     let directionScore = 0.5;
     if (startDirection !== null) {
       const branchVec = subtract(candidate.endPoint, candidate.startPoint);
       const branchLen = Math.hypot(branchVec.x, branchVec.y);
       if (branchLen > 1e-9) {
         const normalizedBranch = normalize(branchVec);
-        const dot =
-          normalizedBranch.x * startDirection.x +
-          normalizedBranch.y * startDirection.y;
+        const dot = normalizedBranch.x * startDirection.x + normalizedBranch.y * startDirection.y;
         directionScore = Math.max(0, Math.min(1, (dot + 1) / 2));
       }
     }
 
-    // 4. Length efficiency (moderate better than extreme)
     const lengthRatio = candidate.length / maxLength;
     const lengthScore = 1 - Math.abs(lengthRatio - 0.6) * 1.25;
 
-    // 5. Attractor alignment
     const midpoint = lerp(candidate.startPoint, candidate.endPoint, 0.5);
     const attractorForce = computeAttractorForce(midpoint, attractorField, seed);
     const branchDir = normalize(subtract(candidate.endPoint, candidate.startPoint));
-    const attractorScore = Math.max(
-      0,
-      Math.min(
-        1,
-        (branchDir.x * attractorForce.x + branchDir.y * attractorForce.y + 1) / 2,
-      ),
-    );
+    const attractorScore = Math.max(0, Math.min(1, (branchDir.x * attractorForce.x + branchDir.y * attractorForce.y + 1) / 2));
 
     const totalScore =
       smoothnessScore * weights.smoothnessWeight +
@@ -313,10 +317,7 @@ export const scoreBranchCandidates = (
       lengthScore * weights.lengthEfficiencyWeight +
       attractorScore * weights.attractorAlignmentWeight;
 
-    return {
-      ...candidate,
-      score: roundDeterministic(totalScore, 4),
-    };
+    return { ...candidate, score: roundDeterministic(totalScore, 4) };
   });
 
   return Object.freeze(scored);
