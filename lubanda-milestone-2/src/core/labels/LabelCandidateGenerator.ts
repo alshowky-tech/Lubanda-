@@ -13,15 +13,18 @@ import type {
   GeneratedCandidatesResult,
   LabelDiagnostic,
 } from "./types.js";
+import { resolveTextDirection } from "./types.js";
 
-const DIAGNOSTIC_MAX_WIDTH = 0;
-const DIAGNOSTIC_LINE_POLICY = "NATURAL";
-const DIAGNOSTIC_MAX_LINES = 100;
-
+const MAX_WIDTH = 0;
+const LINE_POLICY = "NATURAL";
+const MAX_LINES = 100;
 const DEFAULT_TERMINAL_SCALE = 1.2;
+const FONT_FAMILY = "DejaVu Sans";
 
 /**
  * Generate label candidates for each person in a SkeletonPlan.
+ * Uses resolveTextDirection() to set RTL for Arabic/Persian names,
+ * LTR for Latin text. Measures via the real M7.1 TextMeasurementService.
  */
 export class DeterministicLabelCandidateGenerator {
   async generate(input: LabelCandidateGenerationInput): Promise<GeneratedCandidatesResult> {
@@ -49,22 +52,24 @@ export class DeterministicLabelCandidateGenerator {
         continue;
       }
 
-      const direction: TextDirection = "LTR";
-      const terminalScale = (configuration as Record<string, unknown>).terminalLabelScale ?? DEFAULT_TERMINAL_SCALE;
+      // Resolve direction from text content — Arabic names get RTL
+      const direction: TextDirection = resolveTextDirection(nameText);
+
+      const terminalScale = (configuration as unknown as Record<string, unknown>).terminalLabelScale ?? DEFAULT_TERMINAL_SCALE;
       const fontSize = isTerminal
-        ? configuration.minimumFontSize * terminalScale
+        ? configuration.minimumFontSize * Number(terminalScale)
         : configuration.minimumFontSize;
 
       const measureReq: TextMeasureRequest = {
         text: nameText,
-        fontFamily: "DejaVu Sans",
+        fontFamily: FONT_FAMILY,
         fontSize,
         fontWeight: 400,
         letterSpacing: 0,
         direction,
-        maximumWidth: DIAGNOSTIC_MAX_WIDTH,
-        lineCountPolicy: DIAGNOSTIC_LINE_POLICY as "NATURAL",
-        maximumLines: DIAGNOSTIC_MAX_LINES,
+        maximumWidth: MAX_WIDTH,
+        lineCountPolicy: LINE_POLICY as "NATURAL",
+        maximumLines: MAX_LINES,
       };
 
       let metrics: TextMetricsResult;
@@ -99,81 +104,45 @@ export class DeterministicLabelCandidateGenerator {
       const textH = metrics.height;
       const candidates: LabelCandidate[] = [];
 
+      // Build centered bounds around a point
+      const centerOn = (pt: Vec2): Bounds => ({
+        minX: pt.x - textW / 2, minY: pt.y - textH / 2,
+        maxX: pt.x + textW / 2, maxY: pt.y + textH / 2,
+      });
+
       // Aligned
-      const alignedBounds: Bounds = {
-        minX: anchor.x - textW / 2,
-        minY: anchor.y - textH / 2,
-        maxX: anchor.x + textW / 2,
-        maxY: anchor.y + textH / 2,
-      };
-      candidates.push(this.makeCandidate(personId, alignedBounds, anchor, rotation, 0, "ALIGNED_WITH_BRANCH"));
+      candidates.push(this.makeCandidate(personId, centerOn(anchor), anchor, rotation, 0, "ALIGNED_WITH_BRANCH"));
 
       // Above
-      const aboveAnchor: Vec2 = {
-        x: anchor.x + perpDir.x * offsetDist,
-        y: anchor.y + perpDir.y * offsetDist,
-      };
-      const aboveBounds: Bounds = {
-        minX: aboveAnchor.x - textW / 2,
-        minY: aboveAnchor.y - textH / 2,
-        maxX: aboveAnchor.x + textW / 2,
-        maxY: aboveAnchor.y + textH / 2,
-      };
-      candidates.push(this.makeCandidate(personId, aboveBounds, anchor, rotation, distance(anchor, aboveAnchor), "OFFSET_ABOVE_BRANCH"));
+      const aboveAnchor: Vec2 = { x: anchor.x + perpDir.x * offsetDist, y: anchor.y + perpDir.y * offsetDist };
+      candidates.push(this.makeCandidate(personId, centerOn(aboveAnchor), anchor, rotation, distance(anchor, aboveAnchor), "OFFSET_ABOVE_BRANCH"));
 
       // Below
-      const belowAnchor: Vec2 = {
-        x: anchor.x - perpDir.x * offsetDist,
-        y: anchor.y - perpDir.y * offsetDist,
-      };
-      const belowBounds: Bounds = {
-        minX: belowAnchor.x - textW / 2,
-        minY: belowAnchor.y - textH / 2,
-        maxX: belowAnchor.x + textW / 2,
-        maxY: belowAnchor.y + textH / 2,
-      };
-      candidates.push(this.makeCandidate(personId, belowBounds, anchor, rotation, distance(anchor, belowAnchor), "OFFSET_BELOW_BRANCH"));
+      const belowAnchor: Vec2 = { x: anchor.x - perpDir.x * offsetDist, y: anchor.y - perpDir.y * offsetDist };
+      candidates.push(this.makeCandidate(personId, centerOn(belowAnchor), anchor, rotation, distance(anchor, belowAnchor), "OFFSET_BELOW_BRANCH"));
 
       // Lateral
       const lateralDist = offsetDist * 1.5;
       const lateralDir: Vec2 = tangentNorm.x >= 0
         ? { x: tangentNorm.y, y: -tangentNorm.x }
         : { x: -tangentNorm.y, y: tangentNorm.x };
-      const lateralAnchor: Vec2 = {
-        x: anchor.x + lateralDir.x * lateralDist,
-        y: anchor.y + lateralDir.y * lateralDist,
-      };
-      const lateralBounds: Bounds = {
-        minX: lateralAnchor.x - textW / 2,
-        minY: lateralAnchor.y - textH / 2,
-        maxX: lateralAnchor.x + textW / 2,
-        maxY: lateralAnchor.y + textH / 2,
-      };
-      candidates.push(this.makeCandidate(personId, lateralBounds, anchor, rotation, distance(anchor, lateralAnchor), "LATERAL"));
+      const lateralAnchor: Vec2 = { x: anchor.x + lateralDir.x * lateralDist, y: anchor.y + lateralDir.y * lateralDist };
+      candidates.push(this.makeCandidate(personId, centerOn(lateralAnchor), anchor, rotation, distance(anchor, lateralAnchor), "LATERAL"));
 
       // Terminal leaf
       if (isTerminal) {
-        const leafW = textW * terminalScale;
-        const leafH = textH * terminalScale;
+        const factor = Number(terminalScale);
         const leafBounds: Bounds = {
-          minX: anchor.x - leafW / 2,
-          minY: anchor.y - leafH / 2,
-          maxX: anchor.x + leafW / 2,
-          maxY: anchor.y + leafH / 2,
+          minX: anchor.x - (textW * factor) / 2, minY: anchor.y - (textH * factor) / 2,
+          maxX: anchor.x + (textW * factor) / 2, maxY: anchor.y + (textH * factor) / 2,
         };
         candidates.push(this.makeCandidate(personId, leafBounds, anchor, rotation, 0, "TERMINAL_LEAF"));
       }
 
-      // Cartouche (only if zones configured)
+      // Cartouche
       if (cartoucheZones && cartoucheZones.length > 0) {
         for (const zone of cartoucheZones) {
-          const cartBounds: Bounds = {
-            minX: zone.anchor.x - textW / 2,
-            minY: zone.anchor.y - textH / 2,
-            maxX: zone.anchor.x + textW / 2,
-            maxY: zone.anchor.y + textH / 2,
-          };
-          candidates.push(this.makeCandidate(personId, cartBounds, zone.anchor, 0, distance(anchor, zone.anchor), "CARTOUCHE_ZONE"));
+          candidates.push(this.makeCandidate(personId, centerOn(zone.anchor), zone.anchor, 0, distance(anchor, zone.anchor), "CARTOUCHE_ZONE"));
         }
       }
 
@@ -183,7 +152,7 @@ export class DeterministicLabelCandidateGenerator {
       diagnostics.push({
         sequence: seq++, stage: "GENERATE_CANDIDATES",
         personId, code: "CANDIDATES_GENERATED",
-        message: `Generated ${candidates.length} candidates`,
+        message: `Generated ${candidates.length} candidates (direction: ${direction})`,
         metrics: { candidateCount: candidates.length },
       });
 

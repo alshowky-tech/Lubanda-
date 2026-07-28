@@ -1,8 +1,5 @@
 import type { LabelConfig } from "../config/types.js";
-import type {
-  PersonId,
-  SkeletonBranchId,
-} from "../contracts/identifiers.js";
+import type { PersonId, SkeletonBranchId } from "../contracts/identifiers.js";
 import type { GenealogyGraph } from "../genealogy/graph.js";
 import type { SkeletonPlan, SkeletonBranch, SkeletonNode } from "../skeleton/types.js";
 import type { Bounds, Vec2, Polygon } from "../geometry/types.js";
@@ -130,23 +127,36 @@ export interface CartoucheZone {
 // ── Candidate collision query (read-only abstraction) ─────────────────
 
 export interface CandidateCollisionQuery {
-  /** Returns true if bounds overlap any fixed obstacle (branch envelope,
-   *  boundary, or already-placed label), excluding the self-anchor region. */
-  overlapsFixedObstacle(
+  /** Returns true if candidate bounds overlap the candidate's OWN branch
+   *  envelope, EXCLUDING the circular self-anchor attachment zone of
+   *  `anchorRadius` around `anchor`. Other branches are never exempt. */
+  overlapsFixedBranch(
+    candidateBranchId: SkeletonBranchId,
     bounds: Bounds,
-    excludeAnchor?: Vec2,
-    anchorRadius?: number,
+    anchor: Vec2,
+    anchorRadius: number,
   ): boolean;
 
-  /** Returns the minimum distance between a point and any fixed branch
-   *  envelope. Used for leader-line validation. */
-  minClearanceToFixedBranches(point: Vec2): number;
+  /** Returns true if the candidate bounds overlap an already-placed label. */
+  overlapsFixedLabel(
+    bounds: Bounds,
+    fixedPlacements: readonly LabelPlacement[],
+  ): boolean;
+
+  /** Returns true if all four corners of the AABB are within the boundary. */
+  isBoundsInsideBoundary(bounds: Bounds): boolean;
+
+  /** Returns true if the point is inside the template boundary. */
+  isPointInsideBoundary(point: Vec2): boolean;
 
   /** Returns true if the segment from a to b crosses any branch envelope. */
   leaderCrossesFixedObstacle(a: Vec2, b: Vec2): boolean;
 
-  /** Returns true if the point is inside the template boundary. */
-  isInsideBoundary(point: Vec2, margin?: number): boolean;
+  /** Minimum distance from point to any branch envelope sampled curve. */
+  minClearanceToFixedBranches(point: Vec2): number;
+
+  /** Minimum distance from point to the template boundary polygon edge. */
+  boundaryClearance(point: Vec2): number;
 }
 
 // ── Label layout input ────────────────────────────────────────────────
@@ -252,7 +262,7 @@ export interface LabelDiagnostic {
   readonly metrics?: Readonly<Record<string, number>>;
 }
 
-// ── Scoring configuration (not authoritative; configurable) ───────────
+// ── Scoring configuration ─────────────────────────────────────────────
 
 export interface ScoringWeights {
   readonly obstacleCollision: number;
@@ -279,3 +289,12 @@ export interface GeneratedCandidatesResult {
   readonly totalGeneratablePeople: number;
   readonly diagnostics: readonly LabelDiagnostic[];
 }
+
+// ── Direction resolver ────────────────────────────────────────────────
+
+/** Detect if text contains Arabic/Persian script characters. */
+const HAS_ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+
+/** Resolve text direction based on script content. */
+export const resolveTextDirection = (text: string): TextDirection =>
+  HAS_ARABIC_RE.test(text) ? "RTL" : "LTR";

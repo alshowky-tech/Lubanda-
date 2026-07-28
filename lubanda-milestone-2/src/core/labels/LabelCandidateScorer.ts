@@ -34,8 +34,15 @@ export const scoreCandidates = (
   const scored: LabelCandidate[] = [];
 
   for (const candidate of candidates) {
-    const branch = findBranchByPersonId(branchMap, candidate.personId);
-    const validation = validateCandidate(candidate, branch, config, collisionQuery, fixedPlacements, true);
+    const branchAndId = findBranchByPersonId(branchMap, candidate.personId);
+    const validation = validateCandidate(
+      candidate,
+      branchAndId?.branch ?? null,
+      branchAndId?.branchId ?? null,
+      config,
+      collisionQuery,
+      fixedPlacements,
+    );
 
     if (validation.status === "INVALID") {
       scored.push(Object.freeze({
@@ -47,7 +54,7 @@ export const scoreCandidates = (
       }));
     } else {
       const rotScore = validation.rotationScore ?? computeRotationScore(candidate.rotation, config.maximumRotationDegrees);
-      const distScore = validation.anchorDistanceScore ?? computeAnchorDistanceScore(candidate.anchor, candidate.bounds, branch);
+      const distScore = validation.anchorDistanceScore ?? computeAnchorDistanceScore(candidate.anchor, candidate.bounds, branchAndId?.branch ?? null);
       const clearanceScore = validation.clearanceScore ?? computeClearanceScore(candidate, collisionQuery);
       const rhythmScore = computeRhythmScore(candidate, scored);
 
@@ -89,12 +96,8 @@ export const scoreCandidates = (
   return [...validList, ...invalidList];
 };
 
-/**
- * Get only valid, scored candidates sorted by score descending.
- */
-export const getRankedValidCandidates = (
-  candidates: readonly LabelCandidate[],
-): LabelCandidate[] =>
+/** Get only valid, scored candidates sorted by score descending. */
+export const getRankedValidCandidates = (candidates: readonly LabelCandidate[]): LabelCandidate[] =>
   candidates
     .filter((c) => c.validationStatus === "VALID" && c.score !== null)
     .sort((a, b) => {
@@ -121,10 +124,7 @@ const computeAnchorDistanceScore = (
   return Math.max(0, 1 - Math.min(dist / maxDist, 1));
 };
 
-const computeClearanceScore = (
-  candidate: LabelCandidate,
-  collisionQuery: CandidateCollisionQuery,
-): number => {
+const computeClearanceScore = (candidate: LabelCandidate, collisionQuery: CandidateCollisionQuery): number => {
   const dist = collisionQuery.minClearanceToFixedBranches(candidate.anchor);
   const required = 12;
   if (dist >= required) return 1;
@@ -132,10 +132,7 @@ const computeClearanceScore = (
   return dist / required;
 };
 
-const computeRhythmScore = (
-  candidate: LabelCandidate,
-  existing: readonly LabelCandidate[],
-): number => {
+const computeRhythmScore = (candidate: LabelCandidate, existing: readonly LabelCandidate[]): number => {
   const samePerson = existing.filter((c) => c.personId === candidate.personId);
   if (samePerson.length === 0) return 1;
   const avgRotation = samePerson.reduce((sum, c) => sum + Math.abs(c.rotation), 0) / samePerson.length;
@@ -143,12 +140,17 @@ const computeRhythmScore = (
   return Math.max(0, 1 - diff / 45);
 };
 
+interface BranchAndId {
+  readonly branch: SkeletonBranch;
+  readonly branchId: SkeletonBranchId;
+}
+
 const findBranchByPersonId = (
   branchMap: ReadonlyMap<SkeletonBranchId, SkeletonBranch>,
   personId: PersonId,
-): SkeletonBranch | null => {
-  for (const branch of branchMap.values()) {
-    if (branch.ownerPersonId === personId) return branch;
+): BranchAndId | null => {
+  for (const [id, branch] of branchMap) {
+    if (branch.ownerPersonId === personId) return { branch, branchId: id };
   }
   return null;
 };

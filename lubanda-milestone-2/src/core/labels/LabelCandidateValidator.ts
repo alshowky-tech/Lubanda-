@@ -1,4 +1,5 @@
 import type { LabelConfig } from "../config/types.js";
+import type { SkeletonBranchId } from "../contracts/identifiers.js";
 import type { SkeletonBranch } from "../skeleton/types.js";
 import type {
   CandidateCollisionQuery,
@@ -11,19 +12,28 @@ const EPSILON = 1e-7;
 
 /**
  * Validate a single candidate against fixed obstacles.
+ *
+ * Fixed-obstacle scope (no candidate-to-candidate):
+ * - Own branch envelope (with circular self-anchor exemption)
+ * - Other branch envelopes (no exemption)
+ * - Template boundary
+ * - Already-placed labels
+ * - Leader line intersection
+ *
+ * Boundary violations are reported as BOUNDARY_VIOLATION, not BRANCH_PENETRATION.
  */
 export const validateCandidate = (
   candidate: LabelCandidate,
   branch: SkeletonBranch | null,
+  ownBranchId: SkeletonBranchId | null,
   config: LabelConfig,
   collisionQuery: CandidateCollisionQuery,
   fixedPlacements: readonly LabelPlacement[],
-  _allowNearClearance: boolean,
 ): { status: "VALID" | "INVALID"; rejectionReasons: readonly LabelCandidateRejectionRecord[]; rotationScore?: number; anchorDistanceScore?: number; clearanceScore?: number } => {
   const reasons: LabelCandidateRejectionRecord[] = [];
 
   // 1. No branch
-  if (!branch) {
+  if (!branch || !ownBranchId) {
     reasons.push({ code: "NO_BRANCH_FOR_PERSON", message: "No skeleton branch for this person" });
     return { status: "INVALID", rejectionReasons: Object.freeze(reasons) };
   }
@@ -45,23 +55,20 @@ export const validateCandidate = (
     reasons.push({ code: "FINITE_GEOMETRY_FAILURE", message: "Candidate has non-finite geometry" });
   }
 
-  // 4. Branch overlap with self-anchor exemption
-  const selfAnchorRadius = Math.max(branch.thickness.baseThickness, 8);
-  if (collisionQuery.overlapsFixedObstacle(candidate.bounds, candidate.anchor, selfAnchorRadius)) {
-    reasons.push({ code: "BRANCH_PENETRATION", message: "Candidate bounds overlap branch envelope" });
+  // 4. Branch overlap with self-anchor exemption (own branch only)
+  const anchorRadius = Math.max(branch.thickness.baseThickness, 8);
+  if (collisionQuery.overlapsFixedBranch(ownBranchId, candidate.bounds, candidate.anchor, anchorRadius)) {
+    reasons.push({ code: "BRANCH_PENETRATION", message: "Candidate bounds overlap branch envelope outside self-anchor zone" });
   }
 
-  // 5. Boundary containment
-  if (!isInsideBoundary(candidate, collisionQuery)) {
+  // 5. Boundary containment — separate check, separate error code
+  if (!collisionQuery.isBoundsInsideBoundary(candidate.bounds)) {
     reasons.push({ code: "BOUNDARY_VIOLATION", message: "Candidate extends outside template boundary" });
   }
 
   // 6. Fixed label overlap
-  for (const fp of fixedPlacements) {
-    if (rectsOverlap(candidate.bounds, fp.bounds)) {
-      reasons.push({ code: "OVERLAPS_FIXED_LABEL", message: `Overlaps fixed label for person ${fp.personId}` });
-      break;
-    }
+  if (collisionQuery.overlapsFixedLabel(candidate.bounds, fixedPlacements)) {
+    reasons.push({ code: "OVERLAPS_FIXED_LABEL", message: "Overlaps already-placed label" });
   }
 
   // 7. Leader crossing
@@ -91,25 +98,6 @@ export const validateCandidate = (
     anchorDistanceScore,
     clearanceScore,
   };
-};
-
-const rectsOverlap = (
-  a: { minX: number; minY: number; maxX: number; maxY: number },
-  b: { minX: number; minY: number; maxX: number; maxY: number },
-): boolean =>
-  !(a.maxX < b.minX || b.maxX < a.minX || a.maxY < b.minY || b.maxY < a.minY);
-
-const isInsideBoundary = (candidate: LabelCandidate, cq: CandidateCollisionQuery): boolean => {
-  const corners: { x: number; y: number }[] = [
-    { x: candidate.bounds.minX, y: candidate.bounds.minY },
-    { x: candidate.bounds.maxX, y: candidate.bounds.minY },
-    { x: candidate.bounds.maxX, y: candidate.bounds.maxY },
-    { x: candidate.bounds.minX, y: candidate.bounds.maxY },
-  ];
-  for (const c of corners) {
-    if (!cq.isInsideBoundary(c)) return false;
-  }
-  return true;
 };
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }): number =>

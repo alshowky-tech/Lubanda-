@@ -1,9 +1,10 @@
-import { boundsOverlap, expandBounds } from "../geometry/bounds.js";
-import { intersectSegments } from "../geometry/segments.js";
+import { boundsOverlap } from "../geometry/bounds.js";
 import { distance } from "../geometry/vec2.js";
+import { pointSegmentDistance, intersectSegments } from "../geometry/segments.js";
 import type { Vec2, Bounds, Polygon } from "../geometry/types.js";
 import type { CollisionIndex } from "../collision/types.js";
-import type { CandidateCollisionQuery } from "./types.js";
+import type { SkeletonBranchId } from "../contracts/identifiers.js";
+import type { CandidateCollisionQuery, LabelPlacement } from "./types.js";
 
 const EPSILON = 1e-7;
 
@@ -14,55 +15,88 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
   readonly #index: CollisionIndex;
   readonly #templatePolygon: Polygon;
 
-  constructor(
-    index: CollisionIndex,
-    templatePolygon: Polygon,
-  ) {
+  constructor(index: CollisionIndex, templatePolygon: Polygon) {
     this.#index = index;
     this.#templatePolygon = templatePolygon;
   }
 
-  overlapsFixedObstacle(
+  overlapsFixedBranch(
+    candidateBranchId: SkeletonBranchId,
     bounds: Bounds,
-    excludeAnchor?: Vec2,
-    anchorRadius?: number,
+    anchor: Vec2,
+    anchorRadius: number,
   ): boolean {
-    if (!this.#insidePolygonBounds(bounds, this.#templatePolygon)) return true;
-
     const candidates = this.#index.query(bounds);
     for (const entry of candidates) {
-      if (boundsOverlap(entry.envelopeBounds, bounds)) {
-        if (excludeAnchor && anchorRadius && anchorRadius > 0) {
-          const exemptionBounds = expandBounds(
-            { minX: excludeAnchor.x, maxX: excludeAnchor.x, minY: excludeAnchor.y, maxY: excludeAnchor.y },
-            anchorRadius,
-          );
-          if (boundsOverlap(exemptionBounds, bounds)) continue;
-        }
-        return true;
-      }
-    }
+      if (!boundsOverlap(entry.envelopeBounds, bounds)) continue;
 
+      // Skip if this is the candidate's OWN branch and the overlap is
+      // within the circular self-anchor attachment zone
+      if (entry.branchId === candidateBranchId) {
+        // Only exempt geometry that is strictly within the anchor-radius circle.
+        // Check all four corners of the bounds: if any corner is outside the
+        // exemption circle, the overlap is real.
+        const corners: Vec2[] = [
+          { x: bounds.minX, y: bounds.minY },
+          { x: bounds.maxX, y: bounds.minY },
+          { x: bounds.maxX, y: bounds.maxY },
+          { x: bounds.minX, y: bounds.maxY },
+        ];
+        const allInsideAnchor = corners.every(
+          (c) => distance(c, anchor) <= anchorRadius + EPSILON,
+        );
+        if (allInsideAnchor) continue; // exempted
+        // Otherwise the overlap is real (label extends beyond anchor zone)
+      }
+
+      return true; // Other branch always collides
+    }
     return false;
   }
 
-  minClearanceToFixedBranches(point: Vec2): number {
-    let minDist = Infinity;
-    for (const entry of this.#index.entries) {
-      for (const samplePt of entry.sampledCurve) {
-        const d = distance(point, samplePt);
-        if (d < minDist) minDist = d;
+  overlapsFixedLabel(
+    bounds: Bounds,
+    fixedPlacements: readonly LabelPlacement[],
+  ): boolean {
+    for (const fp of fixedPlacements) {
+      if (boundsOverlap(bounds, fp.bounds)) return true;
+    }
+    return false;
+  }
+
+  isBoundsInsideBoundary(bounds: Bounds): boolean {
+    const corners: Vec2[] = [
+      { x: bounds.minX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.maxY },
+      { x: bounds.minX, y: bounds.maxY },
+    ];
+    return corners.every((c) => this.isPointInsideBoundary(c));
+  }
+
+  isPointInsideBoundary(point: Vec2): boolean {
+    const pts = this.#templatePolygon.points;
+    if (pts.length < 3) return false;
+    let inside = false;
+    let j = pts.length - 1;
+    for (let i = 0; i < pts.length; j = i, i += 1) {
+      const xi = pts[i]!.x, yi = pts[i]!.y;
+      const xj = pts[j]!.x, yj = pts[j]!.y;
+      if (
+        (yi > point.y) !== (yj > point.y) &&
+        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi
+      ) {
+        inside = !inside;
       }
     }
-    return minDist;
+    return inside;
   }
 
   leaderCrossesFixedObstacle(a: Vec2, b: Vec2): boolean {
     for (const entry of this.#index.entries) {
       const samples = entry.sampledCurve;
       for (let i = 0; i < samples.length - 1; i += 1) {
-        const s0 = samples[i]!;
-        const s1 = samples[i + 1]!;
+        const s0 = samples[i]!, s1 = samples[i + 1]!;
         const seg = intersectSegments(a, b, s0, s1, { epsilon: EPSILON });
         if (seg.kind === "PROPER" || seg.kind === "COLLINEAR_OVERLAP") return true;
       }
@@ -70,39 +104,26 @@ export class DefaultCandidateCollisionQuery implements CandidateCollisionQuery {
     return false;
   }
 
-  isInsideBoundary(point: Vec2, margin = 0): boolean {
-    return this.#pointInsidePolygon(point, this.#templatePolygon, margin);
-  }
-
-  #insidePolygonBounds(bounds: Bounds, polygon: Polygon): boolean {
-    const corners: Vec2[] = [
-      { x: bounds.minX, y: bounds.minY },
-      { x: bounds.maxX, y: bounds.minY },
-      { x: bounds.maxX, y: bounds.maxY },
-      { x: bounds.minX, y: bounds.maxY },
-    ];
-    for (const corner of corners) {
-      if (!this.#pointInsidePolygon(corner, polygon, 0)) return false;
-    }
-    return true;
-  }
-
-  #pointInsidePolygon(point: Vec2, polygon: Polygon, margin: number): boolean {
-    if (polygon.points.length < 3) return false;
-    let inside = false;
-    let j = polygon.points.length - 1;
-    for (let i = 0; i < polygon.points.length; j = i, i += 1) {
-      const xi = polygon.points[i]!.x;
-      const yi = polygon.points[i]!.y;
-      const xj = polygon.points[j]!.x;
-      const yj = polygon.points[j]!.y;
-      if (
-        yi + margin > point.y !== yj + margin > point.y &&
-        point.x < ((xj - xi) * (point.y - (yi + margin))) / (yj - yi) + xi
-      ) {
-        inside = !inside;
+  minClearanceToFixedBranches(point: Vec2): number {
+    let minDist = Infinity;
+    for (const entry of this.#index.entries) {
+      for (const sp of entry.sampledCurve) {
+        const d = distance(point, sp);
+        if (d < minDist) minDist = d;
       }
     }
-    return inside;
+    return minDist;
+  }
+
+  boundaryClearance(point: Vec2): number {
+    const pts = this.#templatePolygon.points;
+    if (pts.length < 3) return 0;
+    let minDist = Infinity;
+    for (let i = 0; i < pts.length; i += 1) {
+      const a = pts[i]!, b = pts[(i + 1) % pts.length]!;
+      const d = pointSegmentDistance(point, a, b);
+      if (d < minDist) minDist = d;
+    }
+    return minDist;
   }
 }

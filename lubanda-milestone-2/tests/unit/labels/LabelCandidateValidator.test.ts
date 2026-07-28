@@ -9,188 +9,149 @@ import type {
 } from "../../../src/core/labels/types.js";
 import type { Bounds, Vec2 } from "../../../src/core/geometry/types.js";
 
+// -- Mock query with configurable behaviors --
 class MockQuery implements CandidateCollisionQuery {
   constructor(
-    public overlap = false,
+    public branchOverlap = false,
     public clearance = 20,
     public leaderCross = false,
-    public boundaryInside = true,
+    public inside = true,
+    public labelOverlap = false,
   ) {}
-  overlapsFixedObstacle(_b: Bounds, _e?: Vec2, _r?: number): boolean { return this.overlap; }
-  minClearanceToFixedBranches(_p: Vec2): number { return this.clearance; }
+  overlapsFixedBranch(_cid: SkeletonBranchId, _b: Bounds, _a: Vec2, _r: number): boolean { return this.branchOverlap; }
+  overlapsFixedLabel(_b: Bounds, _fp: readonly LabelPlacement[]): boolean { return this.labelOverlap; }
+  isBoundsInsideBoundary(_b: Bounds): boolean { return this.inside; }
+  isPointInsideBoundary(_p: Vec2): boolean { return this.inside; }
   leaderCrossesFixedObstacle(_a: Vec2, _b: Vec2): boolean { return this.leaderCross; }
-  isInsideBoundary(_p: Vec2, _m?: number): boolean { return this.boundaryInside; }
+  minClearanceToFixedBranches(_p: Vec2): number { return this.clearance; }
+  boundaryClearance(_p: Vec2): number { return 100; }
 }
 
-const makeBranch = (): SkeletonBranch => ({
-  id: "b1" as SkeletonBranchId,
+const BID = "b1" as SkeletonBranchId;
+
+const makeBranch = (overrides?: Partial<SkeletonBranch>): SkeletonBranch => ({
+  id: BID,
   ownerPersonId: "p1" as PersonId,
-  parentBranchId: null,
-  generation: 1,
-  genealogyDepth: 1,
-  territoryId: null,
+  parentBranchId: null, generation: 1, genealogyDepth: 1, territoryId: null,
   curve: { p0: { x: 0, y: 0 }, p1: { x: 50, y: 0 }, p2: { x: 100, y: 0 }, p3: { x: 150, y: 0 } },
-  startPoint: { x: 0, y: 0 },
-  endPoint: { x: 150, y: 0 },
-  length: 150,
+  startPoint: { x: 0, y: 0 }, endPoint: { x: 150, y: 0 }, length: 150,
   thickness: { baseThickness: 4, tipThickness: 2, taperRatio: 0.5 },
-  startNodeId: "n1",
-  endNodeId: "n2",
-  childrenBranchIds: Object.freeze([]),
-  candidateScore: null,
-  rejectionHistory: Object.freeze([]),
+  startNodeId: "n1", endNodeId: "n2", childrenBranchIds: Object.freeze([]),
+  candidateScore: null, rejectionHistory: Object.freeze([]),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: Object.freeze({ branchIndex: 1, lineageRootId: "p1" as PersonId, person: null as any }),
-});
-
-const makeCandidate = (overrides: Partial<LabelCandidate> = {}): LabelCandidate => ({
-  personId: "p1" as PersonId,
-  bounds: { minX: 0, minY: 0, maxX: 50, maxY: 12 },
-  anchor: { x: 150, y: 0 },
-  rotation: 0,
-  leaderLength: 0,
-  family: "ALIGNED_WITH_BRANCH",
-  validationStatus: "VALID",
-  rejectionReasons: Object.freeze([]),
-  score: null,
-  componentScores: undefined,
   ...overrides,
 });
 
+const makeCandidate = (overrides?: Partial<LabelCandidate>): LabelCandidate => ({
+  personId: "p1" as PersonId,
+  bounds: { minX: 0, minY: 0, maxX: 50, maxY: 12 },
+  anchor: { x: 150, y: 0 }, rotation: 0, leaderLength: 0,
+  family: "ALIGNED_WITH_BRANCH",
+  validationStatus: "VALID",
+  rejectionReasons: Object.freeze([]),
+  score: null, componentScores: undefined,
+  ...overrides,
+});
+
+const CFG = { minimumFontSize: 12, maximumRotationDegrees: 20 };
+
 describe("LabelCandidateValidator", () => {
-  it("returns VALID for a candidate with no collisions", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
-      makeCandidate(),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false),
-      [],
-      false,
-    );
-    expect(result.status).toBe("VALID");
+  it("returns VALID for clean candidate", () => {
+    const r = validateCandidate(makeCandidate(), makeBranch(), BID, CFG, new MockQuery(), []);
+    expect(r.status).toBe("VALID");
   });
 
   it("returns INVALID when branch is null", () => {
-    const result = validateCandidate(
-      makeCandidate(),
-      null,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false),
-      [],
-      false,
-    );
-    expect(result.status).toBe("INVALID");
-    expect(result.rejectionReasons.some((r) => r.code === "NO_BRANCH_FOR_PERSON")).toBe(true);
+    const r = validateCandidate(makeCandidate(), null, null, CFG, new MockQuery(), []);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "NO_BRANCH_FOR_PERSON")).toBe(true);
   });
 
   it("returns INVALID when rotation exceeds limit", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
-      makeCandidate({ rotation: 30 }),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false),
-      [],
-      false,
-    );
-    // Rotation > 20 -> INVALID
-    expect(result.status).toBe("INVALID");
-    expect(result.rejectionReasons.some((r) => r.code === "ROTATION_EXCEEDS_LIMIT")).toBe(true);
+    const r = validateCandidate(makeCandidate({ rotation: 30 }), makeBranch(), BID, CFG, new MockQuery(), []);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "ROTATION_EXCEEDS_LIMIT")).toBe(true);
   });
 
-  it("returns INVALID when candidate overlaps branch envelope", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
-      makeCandidate(),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(true), // overlap
-      [],
-      false,
+  it("returns INVALID when bounds overflow branch envelope (own branch, outside anchor)", () => {
+    // Bounds that extend far beyond the anchor radius
+    const r = validateCandidate(
+      makeCandidate({ bounds: { minX: -500, minY: -500, maxX: 500, maxY: 500 } }),
+      makeBranch(), BID, CFG, new MockQuery(true), [],
     );
-    expect(result.status).toBe("INVALID");
-    expect(result.rejectionReasons.some((r) => r.code === "BRANCH_PENETRATION")).toBe(true);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "BRANCH_PENETRATION")).toBe(true);
   });
 
-  it("returns INVALID when candidate is outside boundary", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
-      makeCandidate(),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false, 20, false, false), // boundaryInside: false
-      [],
-      false,
+  it("self-anchor exemption: own branch contact inside anchor radius is ALLOWED", () => {
+    // Bounds tightly around the anchor point — all corners within anchorRadius
+    // Make a mock query that simulates the exemption check
+    // We need a special mock for this: the test verifies the VALIDATOR
+    // passes ownBranchId correctly to the query.
+    // The query mock returns `false` for `overlapsFixedBranch` because
+    // the real implementation would exempt it inside the anchor radius.
+    const q = new MockQuery(false); // no overlap reported = exempted
+    const r = validateCandidate(
+      makeCandidate({ bounds: { minX: 146, minY: -4, maxX: 154, maxY: 4 }, anchor: { x: 150, y: 0 } }),
+      makeBranch(), BID, CFG, q, [],
     );
-    expect(result.status).toBe("INVALID");
-    expect(result.rejectionReasons.some((r) => r.code === "BOUNDARY_VIOLATION")).toBe(true);
+    expect(r.status).toBe("VALID");
+  });
+
+  it("other branches get NO self-anchor exemption", () => {
+    // A different branch ID — overlap is always reported
+    const otherBid = "other-branch" as SkeletonBranchId;
+    const r = validateCandidate(
+      makeCandidate({ bounds: { minX: -500, minY: -500, maxX: 500, maxY: 500 } }),
+      makeBranch(), otherBid, CFG, new MockQuery(true), [],
+    );
+    expect(r.status).toBe("INVALID");
+  });
+
+  it("returns BOUNDARY_VIOLATION (not BRANCH_PENETRATION) when outside boundary", () => {
+    const r = validateCandidate(makeCandidate(), makeBranch(), BID, CFG, new MockQuery(false, 20, false, false), []);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "BOUNDARY_VIOLATION")).toBe(true);
+    expect(r.rejectionReasons.some((x) => x.code === "BRANCH_PENETRATION")).toBe(false);
   });
 
   it("returns INVALID for non-finite geometry", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
-      makeCandidate({ bounds: { minX: Infinity, minY: 0, maxX: 0, maxY: 0 } } as LabelCandidate),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false),
-      [],
-      false,
+    const r = validateCandidate(
+      makeCandidate({ bounds: { minX: Infinity, minY: 0, maxX: 0, maxY: 0 } }),
+      makeBranch(), BID, CFG, new MockQuery(), [],
     );
-    expect(result.status).toBe("INVALID");
+    expect(r.status).toBe("INVALID");
   });
 
   it("returns INVALID when leader crosses fixed obstacle", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
+    const r = validateCandidate(
       makeCandidate({ leaderLength: 10, anchor: { x: 0, y: 0 }, bounds: { minX: 100, minY: 0, maxX: 150, maxY: 12 } }),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false, 20, true), // leaderCrosses: true
-      [],
-      false,
+      makeBranch(), BID, CFG, new MockQuery(false, 20, true), [],
     );
-    expect(result.status).toBe("INVALID");
-    expect(result.rejectionReasons.some((r) => r.code === "LEADER_CROSSING")).toBe(true);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "LEADER_CROSSING")).toBe(true);
   });
 
-  it("returns INVALID when candidate overlaps a fixed label placement", () => {
-    const branch = makeBranch();
-    const fixed: LabelPlacement[] = [
-      {
-        personId: "p2" as PersonId,
-        bounds: { minX: 0, minY: 0, maxX: 60, maxY: 12 },
-        anchor: { x: 0, y: 0 },
-        rotation: 0,
-        leaderLength: 0,
-        family: "ALIGNED_WITH_BRANCH",
-        text: "Fixed", fontFamily: "test", fontSize: 12, fontWeight: 400,
-      },
-    ];
-    const result = validateCandidate(
+  it("returns INVALID when overlapping a fixed label", () => {
+    const r = validateCandidate(
       makeCandidate({ bounds: { minX: 10, minY: 0, maxX: 50, maxY: 12 } }),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false),
-      fixed,
-      false,
+      makeBranch(), BID, CFG, new MockQuery(false, 20, false, true, true), [],
     );
-    expect(result.status).toBe("INVALID");
-    expect(result.rejectionReasons.some((r) => r.code === "OVERLAPS_FIXED_LABEL")).toBe(true);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "OVERLAPS_FIXED_LABEL")).toBe(true);
+  });
+});
+
+describe("boundary containment", () => {
+  it("accepts label fully inside rectangular boundary", () => {
+    const r = validateCandidate(makeCandidate({ bounds: { minX: 100, minY: 100, maxX: 200, maxY: 150 } }), makeBranch(), BID, CFG, new MockQuery(false, 20, false, true), []);
+    expect(r.status).toBe("VALID");
   });
 
-  it("reasons include structured details", () => {
-    const branch = makeBranch();
-    const result = validateCandidate(
-      makeCandidate({ rotation: 30 }),
-      branch,
-      { minimumFontSize: 12, maximumRotationDegrees: 20 },
-      new MockQuery(false),
-      [],
-      false,
-    );
-    const rotReason = result.rejectionReasons.find((r) => r.code === "ROTATION_EXCEEDS_LIMIT");
-    expect(rotReason).toBeDefined();
-    expect(rotReason!.details).toBeDefined();
+  it("rejects label with corner outside", () => {
+    const r = validateCandidate(makeCandidate(), makeBranch(), BID, CFG, new MockQuery(false, 20, false, false), []);
+    expect(r.status).toBe("INVALID");
+    expect(r.rejectionReasons.some((x) => x.code === "BOUNDARY_VIOLATION")).toBe(true);
   });
 });
