@@ -36,11 +36,12 @@ flowchart TD
 
 | Decision | Rationale |
 |---|---|
-| **Pure JS (opentype.js)** | Zero native dependencies; works in all JS runtimes; real glyph metrics |
-| **per-character glyph measurement** | Avoids bidi processing issues with `stringToGlyphs()` on fonts without full GSUB tables |
+| **Pure-JS Arabic shaping (ArabicShaper)** | Implements Unicode standard contextual form selection for Arabic without requiring GSUB font tables. Maps base Arabic letters to U+FE70–U+FEFC presentation forms based on joining context (isolated, initial, medial, final). |
+| **Font: DejaVuSans** | Contains full Arabic presentation form glyph set (U+FE8F–U+FEFC) with distinct advance widths for initial, medial, final, and isolated forms. Bundled TTF is 760 KB, SIL Open Font License. |
 | **Deterministic caching** | Cache keyed by full typography request (text, font, size, weight, spacing, direction, maxWidth, lineCountPolicy, maxLines) |
-| **No character-count approximation** | Satisfies LCS-LBL-001 prohibition |
-| **Abstraction-first interface** | `TextMeasurementService` interface allows switching implementation (canvas, HarfBuzz, etc.) |
+| **No character-count approximation** | Satisfies LCS-LBL-001 prohibition; uses real glyph advance widths from shaped presentation forms |
+| **Font-derived line height** | Line height computed from font `ascender - descender + lineGap` scaled by fontSize/unitsPerEm, not a fixed multiplier |
+| **Abstraction-first interface** | `TextMeasurementService` interface allows switching implementation (HarfBuzz, canvas, etc.) |
 
 ## Types defined
 

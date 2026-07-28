@@ -12,12 +12,18 @@
 | M7.1-8 | LabelLayoutMetrics type | LCS-CON-005 | `types.ts` — `LabelLayoutMetrics` | — | ✅ |
 | M7.1-9 | Unresolved label reasons | LCS-LBL-003 | `types.ts` — `UnresolvedLabelReason`, `UnresolvedReasonCode` | — | ✅ |
 | M7.1-10 | SolveContext type | LCS-CON-005 | `types.ts` — `SolveContext` | — | ✅ |
-| M7.1-11 | Arabic text measurement | LCS-LBL-001 | `TextMeasurer.ts` — `OpentypeTextMeasurer` | TextMeasurementService.test.ts | ✅ |
-| M7.1-12 | RTL direction support | LCS-LBL-001, LNGP-R2-04 | `TextMeasurer.ts` — `direction: "LTR" \| "RTL"` | TextMeasurementService.test.ts | ✅ |
-| M7.1-13 | Deterministic measurement | LCS-LBL-001 | `TypographyCache` — cache keyed by full request | TextMeasurementService.test.ts | ✅ |
-| M7.1-14 | Font fallback policy | LCS-LBL-001 | `TextMeasurer.ts` — `resolveFont()` | TextMeasurementService.test.ts | ✅ |
-| M7.1-15 | Cache keyed by full typography request | LCS-LBL-001 | `cache.ts` — `TypographyCache.buildKey()` | TextMeasurementService.test.ts | ✅ |
-| M7.1-16 | No heuristic character-count sizing | LCS-LBL-001 (prohibition) | `TextMeasurer.ts` — uses real glyph advances | TextMeasurementService.test.ts | ✅ |
+| M7.1-11 | Arabic text measurement | LCS-LBL-001 | `TextMeasurer.ts` — `OpentypeTextMeasurer`; `ArabicShaper.ts` — contextual form selection | TextMeasurementService.test.ts, ArabicShaper.test.ts | ✅ |
+| M7.1-12 | Arabic shaping (isolated, initial, medial, final) | LCS-LBL-001, LNGP-R2-04 | `ArabicShaper.ts` — `shapeArabic()` maps base code points to U+FE70–U+FEFC presentation forms | ArabicShaper.test.ts (35 tests) | ✅ |
+| M7.1-13 | Lam-alef ligature | LCS-LBL-001 | `ArabicShaper.ts` — lam-alef detection maps to U+FEF5–U+FEFC | ArabicShaper.test.ts | ✅ |
+| M7.1-14 | RTL direction support | LCS-LBL-001, LNGP-R2-04 | `TextMeasurer.ts` — `direction: "LTR" \| "RTL"` | TextMeasurementService.test.ts | ✅ |
+| M7.1-15 | Deterministic measurement | LCS-LBL-001 | `TypographyCache` — cache keyed by full request | TextMeasurementService.test.ts | ✅ |
+| M7.1-16 | Font fallback policy | LCS-LBL-001 | `TextMeasurer.ts` — `resolveFont()` | TextMeasurementService.test.ts | ✅ |
+| M7.1-17 | Cache keyed by full typography request | LCS-LBL-001 | `cache.ts` — `TypographyCache.buildKey()` | TextMeasurementService.test.ts | ✅ |
+| M7.1-18 | No heuristic character-count sizing | LCS-LBL-001 (prohibition) | `TextMeasurer.ts` — uses real shaped glyph advances | TextMeasurementService.test.ts, ArabicShaper.test.ts | ✅ |
+| M7.1-19 | Font-derived line height | LCS-LBL-001 | `TextMeasurer.ts` — `(ascender - descender + lineGap) * scale` | TextMeasurementService.test.ts | ✅ |
+| M7.1-20 | Diacritic and combining mark support | LNGP-R2-04 | `ArabicShaper.ts` — transparent (T) joining type passes marks through | ArabicShaper.test.ts | ✅ |
+| M7.1-21 | Mixed Arabic/Latin text | LNGP-R2-04 | `ArabicShaper.ts` — non-Arabic characters pass through unchanged | ArabicShaper.test.ts, TextMeasurementService.test.ts | ✅ |
+| M7.1-22 | Arabic-Indic and Western numerals | LNGP-R2-04 | `ArabicShaper.ts` — digit types U/J pass through unchanged | ArabicShaper.test.ts | ✅ |
 | M7.1-17 | Multiline measurement | LCS-LBL-001 | `TextMeasurer.ts` — `wrapText()` | TextMeasurementService.test.ts | ✅ |
 | M7.1-18 | Config: minimumFontSize, maximumRotation | LCS-CON-005 | `src/core/config/types.ts` — `LabelConfig` (existing) | — | ✅ |
 | M7.1-19 | Label issue codes | LCS-CON-005 | `src/core/contracts/issues.ts` — `LABEL_ISSUE_CODES` | schema-parity.test.ts | ✅ |

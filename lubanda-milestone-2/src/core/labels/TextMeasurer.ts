@@ -1,5 +1,6 @@
 import * as opentype from "opentype.js";
 import { TypographyCache } from "./cache.js";
+import { shapedText } from "./ArabicShaper.js";
 import type {
   TextMeasureRequest,
   TextMetricsResult,
@@ -13,22 +14,17 @@ const DEFAULT_FONT_PATH = new URL(
   import.meta.url,
 ).pathname;
 
-const DEFAULT_FONT_BOLD_PATH = new URL(
-  "../../../fonts/DejaVuSans-Bold.ttf",
-  import.meta.url,
-).pathname;
-
+const DEFAULT_LINE_GAP = 0;
 const EPSILON = 1e-6;
 
 /**
  * Deterministic Arabic text measurement service using opentype.js.
  *
- * Implementation strategy (fontkit/opentype.js, pure JS):
- * - Load fonts via opentype.js from configured font paths
- * - Measure each glyph's advance width for accurate text metrics
- * - Support Arabic shaping via GSUB table lookups
- * - Measure lines with RTL-aware layout
- * - Cache results by full typography request for determinism
+ * Implementation strategy:
+ * - Pure-JS Arabic shaping via ArabicShaper (contextual form selection)
+ * - opentype.js for font loading and glyph advance measurement
+ * - Font-derived line height (ascender, descender) instead of fixed multiplier
+ * - Deterministic cache keyed by full typography request
  * - No heuristic character-width approximation (per LCS-LBL-001 prohibition)
  */
 export class OpentypeTextMeasurer implements TextMeasurementService {
@@ -50,12 +46,6 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
         weight: 400,
         style: "normal" as const,
         path: DEFAULT_FONT_PATH,
-      },
-      {
-        family: "DejaVu Sans",
-        weight: 700,
-        style: "normal" as const,
-        path: DEFAULT_FONT_BOLD_PATH,
       },
     ];
   }
@@ -139,6 +129,7 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
 
   /**
    * Perform actual text measurement with the loaded font.
+   * Uses shaped text for Arabic (via ArabicShaper).
    */
   private measureWithFont(
     request: TextMeasureRequest,
@@ -148,12 +139,23 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
     const scale = fontSize / font.unitsPerEm;
     const letterSpacing = request.letterSpacing * fontSize;
 
-    // Step 1: Wrap text into lines
-    const lines = this.wrapText(request.text, font, scale, letterSpacing, request.maximumWidth, request.maximumLines, request.lineCountPolicy);
+    // Shape text: apply Arabic shaping for all text (non-Arabic passes through)
+    const shaped = shapedText(request.text);
 
-    // Step 2: Compute line boxes
+    // Step 1: Wrap shaped text into lines
+    const lines = this.wrapText(shaped, font, scale, letterSpacing, request.maximumWidth, request.maximumLines, request.lineCountPolicy);
+
+    // Step 2: Compute line height from font metrics
+    // lineHeight = (ascender - descender + lineGap) * scale
+    const ascender = font.ascender;
+    const descender = font.descender;
+    const lineHeight = (ascender - descender + DEFAULT_LINE_GAP) * scale;
+
+    // Cap line height to reasonable bounds
+    const effectiveLineHeight = Math.max(lineHeight, fontSize * 1.1);
+
+    // Step 3: Compute line boxes
     const lineBoxes: LineBox[] = [];
-    const lineHeight = fontSize * 1.35; // approximate line height
     let totalWidth = 0;
     let glyphOverflow = false;
 
@@ -162,15 +164,16 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
       const lineWidth = this.measureLineWidth(lineText, font, scale, letterSpacing);
 
       const x = 0; // x is relative to the label bounds
-      const y = li * lineHeight;
-      const baseline = y + fontSize * 0.85; // approximate baseline
+      const y = li * effectiveLineHeight;
+      // Baseline = y + ascender * scale (distance from top to baseline)
+      const baseline = y + ascender * scale;
 
       lineBoxes.push({
-        x: Math.round(x * 100) / 100,
-        y: Math.round(y * 100) / 100,
-        width: Math.round(lineWidth * 100) / 100,
-        height: Math.round(fontSize * 100) / 100,
-        baseline: Math.round(baseline * 100) / 100,
+        x: this.round(x),
+        y: this.round(y),
+        width: this.round(lineWidth),
+        height: this.round(effectiveLineHeight),
+        baseline: this.round(baseline),
         text: lineText,
       });
 
@@ -182,13 +185,13 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
       }
     }
 
-    const totalHeight = lines.length * lineHeight;
+    const totalHeight = lines.length * effectiveLineHeight;
 
-    // Step 3: Round all values
+    // Step 4: Round all values
     const result: TextMetricsResult = {
       width: this.round(totalWidth),
       height: this.round(totalHeight),
-      baseline: this.round(lineBoxes[0]?.baseline ?? fontSize * 0.85),
+      baseline: this.round(lineBoxes[0]?.baseline ?? ascender * scale),
       lineBoxes: Object.freeze(
         lineBoxes.map((lb) => Object.freeze(lb)),
       ),
@@ -201,6 +204,7 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
 
   /**
    * Wrap text into lines based on maximum width.
+   * Operates on the shaped text (Arabic presentation forms).
    */
   private wrapText(
     text: string,
@@ -212,11 +216,9 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
     lineCountPolicy: string,
   ): string[] {
     if (maximumWidth <= 0) {
-      // No wrapping needed; single line
       return [text];
     }
 
-    // For RTL, we measure from the start
     const words = this.splitWords(text);
     const lines: string[] = [];
     let currentLine = "";
@@ -232,14 +234,12 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
         currentLine = potentialLine;
       }
 
-      // Check line count limit
       const reachedLimit = lineCountPolicy === "CLAMP" || lineCountPolicy === "TRUNCATE";
       if (reachedLimit && lines.length >= maximumLines) {
         break;
       }
     }
 
-    // Push remaining line (not if CLAMP/TRUNCATE already capped)
     if (currentLine !== "") {
       const reachedLimit = lineCountPolicy === "CLAMP" || lineCountPolicy === "TRUNCATE";
       if (!(reachedLimit && lines.length >= maximumLines)) {
@@ -251,16 +251,16 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
   }
 
   /**
-   * Split text into words, respecting RTL spaces.
+   * Split text into words.
    */
   private splitWords(text: string): string[] {
-    // Split on whitespace, returning only non-empty word tokens
     const words = text.split(/\s+/).filter((w) => w.length > 0);
     return words.length > 0 ? words : [text];
   }
 
   /**
    * Measure the width of a line of text using glyph advances.
+   * Text is already shaped (Arabic presentation forms).
    */
   private measureLineWidth(
     text: string,
@@ -272,13 +272,10 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
     const len = text.length;
 
     for (let ci = 0; ci < len; ci += 1) {
-      // Use charToGlyph for each character to avoid bidi processing issues
-      // that stringToGlyphs may have with Arabic text on fonts without GSUB tables
       const ch = text[ci]!;
       const glyph = font.charToGlyph(ch);
       totalWidth += glyph.advanceWidth * scale;
 
-      // Add letter spacing
       if (ci < len - 1) {
         totalWidth += letterSpacing;
       }
