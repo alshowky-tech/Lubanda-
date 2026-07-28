@@ -1,20 +1,40 @@
 /**
- * Pure-JS deterministic Arabic text shaping.
+ * Basic deterministic contextual-form Arabic text shaping.
  *
- * Implements Arabic script contextual form selection per Unicode
- * standard (UAX #44). Maps base Arabic letters (U+0600-06FF, U+0750-077F,
- * U+08A0-08FF) to presentation forms (U+FE70-FEFC) based on joining
- * context. Also handles the lam-alef ligature.
+ * This implementation maps base Arabic letters (U+0600-06FF) to their
+ * Arabic Presentation Forms (U+FB50-FDFF, U+FE70-FEFC) based on Unicode
+ * joining properties from the Unicode Character Database (UCD).
  *
- * Fully deterministic: same input always produces same glyph run.
+ * The algorithm is based on joining types (Right-Joining, Dual-Joining,
+ * Non-Joining, Transparent) derived from the UCD. It selects the correct
+ * isolated, initial, medial, or final presentation form for each
+ * Arabic letter based on its joining context within the text.
  *
- * Joining types used in this implementation:
- * - R (Right-Joining): joins only to preceding character
- * - D (Dual-Joining): joins to both preceding and following characters
- * - U (Non-Joining): joins to neither side
- * - T (Transparent): combining marks, do not affect joining decisions
- * - L (Left-Joining): joins only to following character (rare)
+ * This is NOT a complete OpenType shaping engine. It does NOT use GSUB
+ * tables or support font-specific shaping features. It implements basic
+ * deterministic contextual-form selection sufficient for accurate glyph
+ * advance measurement with fonts that include Arabic presentation forms.
+ *
+ * Key features:
+ * - Joining type classification per UCD
+ * - Contextual form selection (isolated/initial/medial/final)
+ * - Lam-alef ligature detection with 4 contextual forms
+ * - Transparent combining mark passthrough (diacritics do not break joining)
+ * - Non-Arabic character passthrough (Latin, digits, punctuation)
+ * - Fully deterministic: same input always produces same output
+ *
+ * Combined with BidiProcessor for directional-run-aware shaping:
+ * - Shapes Arabic within each directional run independently
+ * - Never connects Arabic letters across bidi boundaries
+ * - Produces visual-order shaped output for measurement
+ *
+ * References:
+ * - Unicode Standard Annex #44: Unicode Character Database
+ * - Unicode Standard Annex #9: Unicode Bidirectional Algorithm
+ * - Arabic Presentation Forms B block (U+FE70-U+FEFC)
  */
+
+import { reorderBidi } from "./BidiProcessor.js";
 
 // -- Joining types --
 const J = { R: "R", D: "D", U: "U", T: "T", L: "L" } as const;
@@ -355,3 +375,42 @@ export const shapedText = (text: string): string =>
   shapeArabic(text).glyphs
     .map((g) => String.fromCodePoint(g.codePoint))
     .join("");
+
+/**
+ * Shape Arabic text with bidi-aware directional runs.
+ *
+ * This function:
+ * 1. Splits text into bidi directional runs using BidiProcessor
+ * 2. Applies Arabic shaping within each run independently
+ * 3. Does NOT shape Arabic letters across directional boundaries
+ * 4. For RTL runs, reverses the shaped glyphs to visual order
+ * 5. Concatenates runs in visual order
+ *
+ * NOTE: Uses require() in function body to avoid ESM import of
+ * BidiProcessor at module level, since BidiProcessor is a separate
+ * concern that may not always be needed.
+ *
+ * @param text - input text in logical order
+ * @param direction - base paragraph direction ("LTR" | "RTL")
+ * @returns shaped and reordered text in visual order
+ */
+export const shapeWithBidi = (text: string, direction: string): string => {
+  const result = reorderBidi(text, direction);
+
+  // Shape each bidi run independently
+  const chars = [...text];
+  const visualGlyphs: string[] = [];
+
+  // Within each run, shape the run's text independently
+  for (const run of result.runs) {
+    const runText = run.chars.map((bc: { originalIndex: number }) => chars[bc.originalIndex]!).join("");
+    const shapedRun = shapeArabic(runText);
+    const shapedChars = shapedRun.glyphs.map((g) => String.fromCodePoint(g.codePoint));
+
+    // For RTL runs, reverse the shaped characters within the run (visual order)
+    const visualRun = run.direction === "R" ? [...shapedChars].reverse() : shapedChars;
+    visualGlyphs.push(...visualRun);
+  }
+
+  return visualGlyphs.join("");
+};

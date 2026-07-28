@@ -4,3 +4,4 @@ dist/
 *.log
 
 *.zip
+node_modules/

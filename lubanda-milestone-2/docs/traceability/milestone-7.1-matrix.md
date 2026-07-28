@@ -24,13 +24,16 @@
 | M7.1-20 | Diacritic and combining mark support | LNGP-R2-04 | `ArabicShaper.ts` — transparent (T) joining type passes marks through | ArabicShaper.test.ts | ✅ |
 | M7.1-21 | Mixed Arabic/Latin text | LNGP-R2-04 | `ArabicShaper.ts` — non-Arabic characters pass through unchanged | ArabicShaper.test.ts, TextMeasurementService.test.ts | ✅ |
 | M7.1-22 | Arabic-Indic and Western numerals | LNGP-R2-04 | `ArabicShaper.ts` — digit types U/J pass through unchanged | ArabicShaper.test.ts | ✅ |
-| M7.1-17 | Multiline measurement | LCS-LBL-001 | `TextMeasurer.ts` — `wrapText()` | TextMeasurementService.test.ts | ✅ |
-| M7.1-18 | Config: minimumFontSize, maximumRotation | LCS-CON-005 | `src/core/config/types.ts` — `LabelConfig` (existing) | — | ✅ |
-| M7.1-19 | Label issue codes | LCS-CON-005 | `src/core/contracts/issues.ts` — `LABEL_ISSUE_CODES` | schema-parity.test.ts | ✅ |
-| M7.1-20 | Label stages in solve pipeline | LCS-ARC-002 | `src/core/contracts/solve-stage.ts` — `MILESTONE_7_STAGES` | — | ✅ |
-| M7.1-21 | Label layout result schema | LCS-TST-005 | `schemas/label-layout-result.schema.json` | schema-parity.test.ts | ✅ |
-| M7.1-22 | Input validation | LCS-LBL-001 | `TextMeasurer.ts` — `validateRequest()` | TextMeasurementService.test.ts | ✅ |
-| M7.1-23 | Immutable results | LCS-GOV-001 §7 | `TextMeasurer.ts` — `Object.freeze` on lineBoxes | TextMeasurementService.test.ts | ✅ |
+| M7.1-24 | Bidi processing (UAX #9) | LCS-LBL-001, LNGP-R2-04 | `BidiProcessor.ts` — `reorderBidi()` with UAX #9 weak/neutral/implicit resolution | BidiProcessor.test.ts | ✅ |
+| M7.1-25 | Visual-order measurement | LCS-LBL-001 | `ArabicShaper.ts` — `shapeWithBidi()` shapes within runs, reorders to visual | TextMeasurementService.test.ts | ✅ |
+| M7.1-26 | Bidi run isolation (no cross-boundary joining) | LCS-LBL-001 | `ArabicShaper.ts` — `shapeWithBidi()` shapes each run independently | BidiProcessor.test.ts | ✅ |
+| M7.1-27 | Multiline measurement | LCS-LBL-001 | `TextMeasurer.ts` — `wrapText()` | TextMeasurementService.test.ts | ✅ |
+| M7.1-28 | Config: minimumFontSize, maximumRotation | LCS-CON-005 | `src/core/config/types.ts` — `LabelConfig` (existing) | — | ✅ |
+| M7.1-29 | Label issue codes | LCS-CON-005 | `src/core/contracts/issues.ts` — `LABEL_ISSUE_CODES` | schema-parity.test.ts | ✅ |
+| M7.1-30 | Label stages in solve pipeline | LCS-ARC-002 | `src/core/contracts/solve-stage.ts` — `MILESTONE_7_STAGES` | — | ✅ |
+| M7.1-31 | Label layout result schema | LCS-TST-005 | `schemas/label-layout-result.schema.json` | schema-parity.test.ts | ✅ |
+| M7.1-32 | Input validation | LCS-LBL-001 | `TextMeasurer.ts` — `validateRequest()` | TextMeasurementService.test.ts | ✅ |
+| M7.1-33 | Immutable results | LCS-GOV-001 §7 | `TextMeasurer.ts` — `Object.freeze` on lineBoxes | TextMeasurementService.test.ts | ✅ |
 
 ## Quality gates
 

@@ -1,6 +1,6 @@
 import * as opentype from "opentype.js";
 import { TypographyCache } from "./cache.js";
-import { shapedText } from "./ArabicShaper.js";
+import { shapeWithBidi } from "./ArabicShaper.js";
 import type {
   TextMeasureRequest,
   TextMetricsResult,
@@ -139,8 +139,11 @@ export class OpentypeTextMeasurer implements TextMeasurementService {
     const scale = fontSize / font.unitsPerEm;
     const letterSpacing = request.letterSpacing * fontSize;
 
-    // Shape text: apply Arabic shaping for all text (non-Arabic passes through)
-    const shaped = shapedText(request.text);
+    // Shape text with bidi-aware directional runs
+    // Uses the BidiProcessor to reorder text to visual order,
+    // then applies Arabic contextual shaping within each directional run.
+    // This ensures Arabic letters don't connect across bidi boundaries.
+    const shaped = shapeWithBidi(request.text, request.direction);
 
     // Step 1: Wrap shaped text into lines
     const lines = this.wrapText(shaped, font, scale, letterSpacing, request.maximumWidth, request.maximumLines, request.lineCountPolicy);

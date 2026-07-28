@@ -24,7 +24,6 @@
     "ajv-formats": "^3.0.1",
     "fast-xml-parser": "^5.10.1",
     "fflate": "^0.8.3",
-    "fontkit": "^2.0.4",
     "opentype.js": "^2.0.0"
   },
   "devDependencies": {
