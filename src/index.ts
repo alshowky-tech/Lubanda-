@@ -8,6 +8,7 @@ export * from "./core/geometry/index.js";
 export * from "./core/import/index.js";
 export * from "./core/layout/index.js";
 export * from "./core/labels/index.js";
+export * from "./core/preview/index.js";
 export * from "./core/skeleton/index.js";
 export * from "./core/spatial/index.js";
 export * from "./core/territory/index.js";

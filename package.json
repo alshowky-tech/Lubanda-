@@ -18,9 +18,11 @@
     "validate:official": "node --import tsx scripts/validate-official-workbook.ts",
     "benchmark:official": "node --import tsx scripts/benchmark-official-territories.ts",
     "validate:golden": "node --import tsx scripts/validate-golden-dataset.ts",
+    "preview:golden": "node --import tsx scripts/export-golden-preview.ts",
     "manifest": "node --import tsx scripts/generate-file-manifest.ts"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "fast-xml-parser": "^5.10.1",
