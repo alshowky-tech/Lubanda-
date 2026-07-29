@@ -17,6 +17,7 @@
     "diagnostic:skeleton-svg": "node --import tsx scripts/generate-skeleton-diagnostic-svg.ts",
     "validate:official": "node --import tsx scripts/validate-official-workbook.ts",
     "benchmark:official": "node --import tsx scripts/benchmark-official-territories.ts",
+    "validate:golden": "node --import tsx scripts/validate-golden-dataset.ts",
     "manifest": "node --import tsx scripts/generate-file-manifest.ts"
   },
   "dependencies": {

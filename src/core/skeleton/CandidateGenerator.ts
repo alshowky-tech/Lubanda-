@@ -3,6 +3,7 @@ import type { Polygon, Vec2, CubicBezier, Bounds } from "../geometry/types.js";
 import { distance, lerp, normalize, subtract } from "../geometry/vec2.js";
 import { sampleCubicBezier } from "../geometry/bezier.js";
 import { boundsOverlap } from "../geometry/bounds.js";
+import { intersectSegments } from "../geometry/segments.js";
 import { stableUnit, roundDeterministic } from "../determinism/numeric.js";
 import {
   computeAttractorForce,
@@ -67,17 +68,41 @@ const curveBounds = (curve: CubicBezier): Bounds => {
   return { minX, minY, maxX, maxY };
 };
 
-const curveIntersectsAnyBounds = (
-  curve: CubicBezier,
-  existingBounds: readonly Bounds[],
-  skipParent: boolean,
+const sampledCurveIntersects = (
+  left: readonly Vec2[],
+  right: readonly Vec2[],
 ): boolean => {
-  if (existingBounds.length === 0) return false;
+  for (let leftIndex = 0; leftIndex < left.length - 1; leftIndex += 1) {
+    for (let rightIndex = 0; rightIndex < right.length - 1; rightIndex += 1) {
+      const intersection = intersectSegments(
+        left[leftIndex] as Vec2,
+        left[leftIndex + 1] as Vec2,
+        right[rightIndex] as Vec2,
+        right[rightIndex + 1] as Vec2,
+      );
+      if (intersection.kind !== "NONE") return true;
+    }
+  }
+  return false;
+};
+
+const curveIntersectsAnyExistingCurve = (
+  curve: CubicBezier,
+  existingBranches: CandidateGenerationInput["existingBranches"],
+  ignoredBranchIds: readonly string[],
+): boolean => {
+  if (existingBranches.length === 0) return false;
+  const samples = sampleCubicBezier(curve, defaultSamplingOptions);
   const bounds = curveBounds(curve);
-  // When skipParent is true, exclude the last entry (the immediate parent's bounds)
-  const limit = skipParent ? existingBounds.length - 1 : existingBounds.length;
-  for (let i = 0; i < limit; i += 1) {
-    if (boundsOverlap(bounds, existingBounds[i]!, 4)) return true;
+  const ignored = new Set<string>(ignoredBranchIds);
+  for (const existing of existingBranches) {
+    if (ignored.has(existing.id)) continue;
+    if (!boundsOverlap(bounds, curveBounds(existing.curve))) continue;
+    const existingSamples = sampleCubicBezier(
+      existing.curve,
+      defaultSamplingOptions,
+    );
+    if (sampledCurveIntersects(samples, existingSamples)) return true;
   }
   return false;
 };
@@ -213,7 +238,13 @@ export const generateBranchCandidates = (
         rejectionReasons.push("TERRITORY_BOUNDARY_CROSSED");
       }
     }
-    if (curveIntersectsAnyBounds(curve, input.existingBranchBounds, input.skipParentBounds)) {
+    if (
+      curveIntersectsAnyExistingCurve(
+        curve,
+        input.existingBranches,
+        input.ignoredBranchIds,
+      )
+    ) {
       rejectionReasons.push("BRANCH_INTERSECTION");
     }
 

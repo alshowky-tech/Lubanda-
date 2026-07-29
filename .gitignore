@@ -4,3 +4,4 @@ dist/
 *.log
 
 *.zip
+artifacts/golden-dataset-validation-report.json

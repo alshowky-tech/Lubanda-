@@ -40,7 +40,7 @@ const pointBounds = (point: Vec2, radius: number): Bounds => ({
   maxY: point.y + radius,
 });
 
-const branchWoodObstacles = (
+export const buildBranchWoodObstacles = (
   branch: SkeletonBranch,
   barkAllowance: number,
   tolerance: number,
@@ -63,6 +63,23 @@ const branchWoodObstacles = (
   });
 };
 
+export const buildSkeletonWoodObstacles = (
+  branches: readonly SkeletonBranch[],
+  barkAllowance: number,
+  tolerance: number,
+  maxSubdivisionDepth: number,
+): readonly LabelObstacle[] =>
+  [...branches]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .flatMap((branch) =>
+      buildBranchWoodObstacles(
+        branch,
+        barkAllowance,
+        tolerance,
+        maxSubdivisionDepth,
+      ),
+    );
+
 export class LabelLayoutEngine {
   layout(input: LabelLayoutInput): LabelLayoutResult {
     if (input.skeletonPlan.status !== "ACCEPTED") {
@@ -73,16 +90,12 @@ export class LabelLayoutEngine {
     }
 
     const generation = new LabelCandidateGenerator().generate(input);
-    const obstacles = [...input.skeletonPlan.branches]
-      .sort((left, right) => left.id.localeCompare(right.id))
-      .flatMap((branch) =>
-        branchWoodObstacles(
-          branch,
-          input.configuration.collision.barkAllowance,
-          input.configuration.geometry.bezierSubdivisionTolerance,
-          input.configuration.geometry.maxSubdivisionDepth,
-        ),
-      );
+    const obstacles = buildSkeletonWoodObstacles(
+      input.skeletonPlan.branches,
+      input.configuration.collision.barkAllowance,
+      input.configuration.geometry.bezierSubdivisionTolerance,
+      input.configuration.geometry.maxSubdivisionDepth,
+    );
     const assignment = new LabelAssignmentEngine().assign({
       candidates: generation.candidates,
       obstacles,

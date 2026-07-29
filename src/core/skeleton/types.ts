@@ -11,7 +11,7 @@ import type { DemandPlan } from "../demand/types.js";
 import type { DiagnosticCollector } from "../diagnostics/DiagnosticCollector.js";
 import type { GenealogyGraph } from "../genealogy/graph.js";
 import type { Person } from "../genealogy/types.js";
-import type { Bounds, CubicBezier, Polygon, Vec2 } from "../geometry/types.js";
+import type { CubicBezier, Polygon, Vec2 } from "../geometry/types.js";
 import type { TerritoryPlan } from "../territory/types.js";
 
 // ── Brand type helpers ────────────────────────────────────────────────
@@ -228,8 +228,11 @@ export interface CandidateGenerationInput {
   readonly attractors: AttractorField;
   readonly config: SkeletonConfig;
   readonly seed: number;
-  readonly existingBranchBounds: readonly Bounds[];
-  readonly skipParentBounds: boolean;     // skip parent chain bounds from intersection check
+  readonly existingBranches: readonly Readonly<{
+    readonly id: SkeletonBranchId;
+    readonly curve: CubicBezier;
+  }>[];
+  readonly ignoredBranchIds: readonly SkeletonBranchId[];
   readonly relaxedTerritoryCheck: boolean; // tolerate start outside territory (trunk junction entry)
   readonly candidateCount: number;
   readonly genealogyDepth: number;

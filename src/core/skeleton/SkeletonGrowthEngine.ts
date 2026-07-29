@@ -9,8 +9,9 @@ import { sha256Canonical } from "../determinism/canonical-json.js";
 import { roundDeterministic, stableUnit } from "../determinism/numeric.js";
 import { distance, lerp, normalize, subtract } from "../geometry/vec2.js";
 import { boundsFromPoints } from "../geometry/bounds.js";
+import { evaluateCubicBezier } from "../geometry/bezier.js";
 import { classifyPointInPolygon } from "../geometry/polygon.js";
-import type { CubicBezier, Vec2, Bounds, Polygon } from "../geometry/types.js";
+import type { CubicBezier, Vec2, Polygon } from "../geometry/types.js";
 import type { Person } from "../genealogy/types.js";
 import { buildAttractorField } from "./AttractorField.js";
 import { computeBranchThickness } from "./BranchThickness.js";
@@ -29,6 +30,7 @@ import type {
   TrunkSkeleton,
   MappedJunction,
   SkeletonDiagnostic,
+  BranchCandidate,
   CandidateGenerationInput,
   CandidateRejectionRecord,
   BranchRejectionReason,
@@ -138,7 +140,10 @@ export class DeterministicSkeletonGrowthEngine
 
     const nodes = new Map<string, SkeletonNode>();
     const branches = new Map<string, SkeletonBranch>();
-    const allBranchBounds: Bounds[] = [];
+    const allBranchGeometry: Array<{
+      readonly id: SkeletonBranchId;
+      readonly curve: CubicBezier;
+    }> = [];
     const mappedJunctions: MappedJunction[] = [];
     let totalInvalidCandidates = 0;
     let totalRejectedCandidates = 0;
@@ -392,8 +397,10 @@ export class DeterministicSkeletonGrowthEngine
       parentDirection: Vec2 | null,
       genealogyDepth: number,
       skeletonDepth: number,
-      existingBounds: Bounds[],
-      excludeBoundsCount = 0,
+      existingBranches: Array<{
+        readonly id: SkeletonBranchId;
+        readonly curve: CubicBezier;
+      }>,
     ): { branch: SkeletonBranch | null; endNodeId: string | null } => {
       const person = input.graph.personsById.get(personId);
       if (!person) return { branch: null, endNodeId: null };
@@ -437,67 +444,125 @@ export class DeterministicSkeletonGrowthEngine
 
       const toEnd = subtract(endPoint, startPoint);
       const toEndLen = Math.hypot(toEnd.x, toEnd.y);
-      const direction = toEndLen > EPSILON
+      let direction = toEndLen > EPSILON
         ? normalize(toEnd)
         : parentDirection ?? TRUNK_UPWARD_DIRECTION;
 
-      // Generate and evaluate candidates
+      // Generate and evaluate candidates. If a fixed endpoint traps every
+      // candidate, sweep deterministic alternate directions while preserving
+      // all hard geometry checks.
       const territoryPolygon = territory?.polygon ?? null;
       // Major lineage branches (parentBranchId === null) start at trunk junctions
       // which may be outside the territory. Use relaxed check for those.
       const relaxedTerritory = parentBranchId === null;
-      const candidateInput: CandidateGenerationInput = {
-        startPoint,
-        endPoint,
-        startDirection: parentDirection ?? TRUNK_UPWARD_DIRECTION,
-        ownerPersonId: personId,
-        territoryPolygon,
-        templatePolygon,
-        attractors: attractorField,
-        config: input.configuration,
-        seed: input.seed + skeletonDepth * 13 + branches.size * 7,
-        existingBranchBounds: existingBounds,
-        skipParentBounds: excludeBoundsCount > 0,
-        relaxedTerritoryCheck: relaxedTerritory,
-        candidateCount: input.configuration.candidateCount,
-        genealogyDepth,
-        roundingDecimalPlaces: decimalPlaces,
-      };
+      const directionOffsets = territory === undefined
+        ? [0, 18, -18, 36, -36, 54, -54, 72, -72, 90, -90, 120, -120, 150, -150, 180]
+        : [0];
+      const attemptedCandidates: BranchCandidate[] = [];
+      let selected: BranchCandidate | null = null;
+      let acceptedCandidateIndex: number | null = null;
+      const branchDistance = Math.max(
+        toEndLen,
+        input.configuration.minimumBranchLength * 3,
+      );
+      for (
+        let directionAttempt = 0;
+        directionAttempt < directionOffsets.length && selected === null;
+        directionAttempt += 1
+      ) {
+        const angle = (directionOffsets[directionAttempt] as number) * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const attemptDirection = {
+          x: direction.x * cos - direction.y * sin,
+          y: direction.x * sin + direction.y * cos,
+        };
+        const rawAttemptEnd = directionAttempt === 0
+          ? endPoint
+          : {
+              x: startPoint.x + attemptDirection.x * branchDistance,
+              y: startPoint.y + attemptDirection.y * branchDistance,
+            };
+        const attemptEnd = classifyPointInPolygon(rawAttemptEnd, templatePolygon) === "OUTSIDE"
+          ? {
+              x: Math.max(bounds.minX + 10, Math.min(bounds.maxX - 10, rawAttemptEnd.x)),
+              y: Math.max(bounds.minY + 10, Math.min(bounds.maxY - 10, rawAttemptEnd.y)),
+            }
+          : rawAttemptEnd;
+        const candidateInput: CandidateGenerationInput = {
+          startPoint,
+          endPoint: attemptEnd,
+          startDirection: parentDirection ?? TRUNK_UPWARD_DIRECTION,
+          ownerPersonId: personId,
+          territoryPolygon,
+          templatePolygon,
+          attractors: attractorField,
+          config: input.configuration,
+          seed:
+            input.seed +
+            skeletonDepth * 13 +
+            branches.size * 7 +
+            directionAttempt * 997,
+          existingBranches,
+          ignoredBranchIds:
+            parentBranchId === null ? [] : [parentBranchId],
+          relaxedTerritoryCheck: relaxedTerritory,
+          candidateCount: input.configuration.candidateCount,
+          genealogyDepth,
+          roundingDecimalPlaces: decimalPlaces,
+        };
+        const candidates = generateBranchCandidates(candidateInput);
+        const indexOffset = attemptedCandidates.length;
+        const scored = scoreBranchCandidates(
+          candidates,
+          parentDirection ?? TRUNK_UPWARD_DIRECTION,
+          attractorField,
+          input.seed + skeletonDepth * 17 + directionAttempt * 997,
+        ).map((candidate) => ({
+          ...candidate,
+          index: candidate.index + indexOffset,
+        }));
+        attemptedCandidates.push(...scored);
+        selected = selectBestCandidate(scored);
+        if (selected !== null) {
+          endPoint = selected.endPoint;
+          direction = normalize(subtract(endPoint, startPoint));
+          acceptedCandidateIndex = selected.index;
+        }
+      }
 
-      const candidates = generateBranchCandidates(candidateInput);
       const rejectionHistory: CandidateRejectionRecord[] = [];
-      for (const c of candidates) {
+      for (const c of attemptedCandidates) {
         if (!c.valid) {
           for (const reason of c.rejectionReasons) {
             rejectionHistory.push({ candidateIndex: c.index, reason });
           }
         }
       }
-      totalInvalidCandidates += candidates.filter((c) => !c.valid).length;
-
-      const scored = scoreBranchCandidates(
-        candidates,
-        parentDirection ?? TRUNK_UPWARD_DIRECTION,
-        attractorField,
-        input.seed + skeletonDepth * 17,
-      );
-
-      const selected = selectBestCandidate(scored);
-      const acceptedCandidateIndex = selected?.index ?? null;
-      totalRejectedCandidates += candidates.filter(
+      totalInvalidCandidates += attemptedCandidates.filter((c) => !c.valid).length;
+      totalRejectedCandidates += attemptedCandidates.filter(
         (c) => c.valid && c.index !== selected?.index,
       ).length;
 
       // 💥 Correction 1: Hard candidate rejection — no fallback branch
       if (!selected) {
+        const rejectionCounts = attemptedCandidates.reduce<Record<string, number>>(
+          (counts, candidate) => {
+            for (const reason of candidate.rejectionReasons) {
+              counts[reason] = (counts[reason] ?? 0) + 1;
+            }
+            return counts;
+          },
+          {},
+        );
         addDiagnostic(
           "RECURSIVE_GROWTH",
           "NO_VALID_CANDIDATE",
-          { candidateCount: candidates.length },
+          { candidateCount: attemptedCandidates.length, ...rejectionCounts },
           undefined,
           personId,
           "NO_VALID_CANDIDATE",
-          candidates.length,
+          attemptedCandidates.length,
         );
         growthFailed = true;
         growthFailurePersonId = personId;
@@ -523,11 +588,7 @@ export class DeterministicSkeletonGrowthEngine
       // If parentBranchId is null, this is a major lineage branch starting at a trunk junction.
       // Use startNodeId directly (caller provides the exact trunk junction node).
       // Otherwise, look up the parent branch's end node.
-      const effectiveStartNodeId =
-        parentBranchId === null ? startNodeId : (() => {
-          const parentBr = branches.get(parentBranchId);
-          return parentBr?.endNodeId ?? startNodeId;
-        })();
+      const effectiveStartNodeId = startNodeId;
 
       const branch: SkeletonBranch = {
         id: branchId,
@@ -559,7 +620,7 @@ export class DeterministicSkeletonGrowthEngine
         }),
       };
       branches.set(branchId, branch);
-      allBranchBounds.push(...branchBounds(branch));
+      allBranchGeometry.push({ id: branch.id, curve: branch.curve });
 
       addDiagnostic(
         "RECURSIVE_GROWTH",
@@ -567,13 +628,13 @@ export class DeterministicSkeletonGrowthEngine
         {
           length: branch.length,
           score: selected.score ?? 0,
-          candidateCount: candidates.length,
-          validCount: candidates.filter((c) => c.valid).length,
+          candidateCount: attemptedCandidates.length,
+          validCount: attemptedCandidates.filter((c) => c.valid).length,
         },
         branchId,
         personId,
         undefined,
-        candidates.length,
+        attemptedCandidates.length,
         acceptedCandidateIndex ?? 0,
       );
 
@@ -597,7 +658,7 @@ export class DeterministicSkeletonGrowthEngine
         if (children.length > 1) {
           // Multiple children — create split nodes at distributed positions
           const t = 0.55 + (childIndex / Math.max(1, children.length)) * 0.4;
-          childStartPoint = lerp(startPoint, endPoint, t);
+          childStartPoint = evaluateCubicBezier(branch.curve, t);
           const splitNodeId = nextNodeId("branch-split");
           const splitNode: SkeletonNode = {
             id: splitNodeId,
@@ -616,7 +677,6 @@ export class DeterministicSkeletonGrowthEngine
         }
 
         // For children, skip parent chain bounds from intersection check
-        const parentExclude = 1;  // skip parent -> skipParentBounds = true
         const result = growBranchRecursive(
           childId,
           branchId,
@@ -625,8 +685,7 @@ export class DeterministicSkeletonGrowthEngine
           childDir,
           genealogyDepth + 1,
           skeletonDepth + 1,
-          allBranchBounds,
-          parentExclude,
+          allBranchGeometry,
         );
         if (result.branch) {
           childBranchIds.push(result.branch.id);
@@ -683,7 +742,7 @@ export class DeterministicSkeletonGrowthEngine
         lineageDirection,
         1,
         1,
-        allBranchBounds,
+        allBranchGeometry,
       );
     }
 
@@ -701,6 +760,27 @@ export class DeterministicSkeletonGrowthEngine
 
       const allBranches = [...branches.values()];
       const allNodes = [...nodes.values()];
+      const acceptedPersonIds = new Set(
+        allBranches.map((branch) => branch.ownerPersonId),
+      );
+      const expectedPersonCount = input.graph.getSubtree(input.selectedRootId).length;
+      const rejectionIssue = Object.freeze({
+        code: "SKELETON_NO_VALID_CANDIDATE",
+        severity: "ERROR",
+        messageKey: "skeleton.noValidCandidate",
+        stage: "GROW_SKELETON",
+        ...(growthFailurePersonId === null
+          ? {}
+          : { entityIds: [growthFailurePersonId] }),
+        details: {
+          candidateAttempts: rejectionDiagnostic.metrics.totalInvalidCandidates,
+        },
+        recoverable: true,
+      } as const);
+      const maximumGenealogyDepth = Math.max(
+        ...allBranches.map((branch) => branch.genealogyDepth),
+        0,
+      );
       const rejectedFingerprint = await sha256Canonical({
         status: "REJECTED",
         selectedRootId: input.selectedRootId,
@@ -726,21 +806,22 @@ export class DeterministicSkeletonGrowthEngine
         diagnostics: Object.freeze(diagnostics),
         validation: Object.freeze({
           accepted: false,
-          issues: Object.freeze([]),
+          issues: Object.freeze([rejectionIssue]),
           metrics: {
             branchCount: allBranches.length,
             nodeCount: allNodes.length,
             trunkSegmentCount: trunk.segments.length,
             junctionCount: mappedJunctions.length,
             invalidBranchCount: 0,
-            missingPersonBranchCount: 0,
+            missingPersonBranchCount:
+              expectedPersonCount - acceptedPersonIds.size,
             orphanBranchCount: 0,
             territoryMissCount: 0,
             outOfBoundsCount: 0,
             intersectionCount: 0,
             totalCurveLength: roundDeterministic(allBranches.reduce((s, b) => s + b.length, 0), decimalPlaces),
-            maxDepth: 0,
-            acceptedPersonCount: allBranches.length,
+            maxDepth: maximumGenealogyDepth,
+            acceptedPersonCount: acceptedPersonIds.size,
             connectedPersonCount: allBranches.filter((b) => b.parentBranchId !== null || b.generation === 0).length,
           },
         }),
@@ -749,8 +830,8 @@ export class DeterministicSkeletonGrowthEngine
           algorithm: "RECURSIVE_ORGANIC_GROWTH",
           branchCount: allBranches.length,
           nodeCount: allNodes.length,
-          maximumGenealogyDepth: 0,
-          maximumSkeletonDepth: 0,
+          maximumGenealogyDepth,
+          maximumSkeletonDepth: maximumGenealogyDepth,
           totalInvalidCandidateCount: totalInvalidCandidates,
           totalRejectedCandidateCount: totalRejectedCandidates,
         }),
@@ -903,25 +984,6 @@ export class DeterministicSkeletonGrowthEngine
     return plan;
   }
 }
-
-// ── Helper: compute approximate bounds for a branch ──────────────────
-
-const branchBounds = (branch: SkeletonBranch): readonly Bounds[] => {
-  const points = [
-    branch.curve.p0,
-    branch.curve.p1,
-    branch.curve.p2,
-    branch.curve.p3,
-  ];
-  return [
-    {
-      minX: Math.min(...points.map((p) => p.x)) - 20,
-      minY: Math.min(...points.map((p) => p.y)) - 20,
-      maxX: Math.max(...points.map((p) => p.x)) + 20,
-      maxY: Math.max(...points.map((p) => p.y)) + 20,
-    },
-  ];
-};
 
 // ── Helper: generate evenly-spaced child directions ──────────────────
 
