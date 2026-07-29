@@ -3,6 +3,7 @@ import type { Bounds, Vec2 } from "../geometry/types.js";
 import type { SkeletonBranch } from "../skeleton/types.js";
 import { LabelAssignmentEngine } from "./LabelAssignmentEngine.js";
 import { LabelCandidateGenerator } from "./LabelCandidateGenerator.js";
+import { LabelFallbackPlanner } from "./LabelFallbackPlanner.js";
 import type {
   LabelLayoutDiagnostic,
   LabelLayoutInput,
@@ -101,14 +102,28 @@ export class LabelLayoutEngine {
       obstacles,
       clearance: input.configuration.collision.labelClearance / 2,
     });
+    const fallback = new LabelFallbackPlanner().plan({
+      graph: input.graph,
+      branches: input.skeletonPlan.branches,
+      templatePolygon: input.templatePolygon,
+      configuration: input.configuration,
+      unresolvedPersonIds: assignment.unassignedPersonIds,
+      fixedPlacements: assignment.placements,
+      obstacles,
+    });
+    const placements = [...assignment.placements, ...fallback.placements].sort(
+      (left, right) => left.personId.localeCompare(right.personId),
+    );
+    const candidates = [...generation.candidates, ...fallback.candidates];
     const rejected: RejectedLabelCandidate[] = [
       ...generation.rejected,
       ...assignment.rejected,
+      ...fallback.rejected,
     ];
     const expectedPeople = [...new Set(
       input.skeletonPlan.branches.map((branch) => branch.ownerPersonId),
     )].sort((left, right) => left.localeCompare(right));
-    const placedPeople = new Set(assignment.placements.map((placement) => placement.personId));
+    const placedPeople = new Set(placements.map((placement) => placement.personId));
     const unresolvedPersonIds = expectedPeople.filter((personId) => !placedPeople.has(personId));
     const diagnostics: LabelLayoutDiagnostic[] = unresolvedPersonIds.map((personId) => {
       const personRejected = rejected.filter((item) => item.personId === personId);
@@ -126,19 +141,21 @@ export class LabelLayoutEngine {
 
     return Object.freeze({
       status: unresolvedPersonIds.length === 0 ? "ACCEPTED" : "PARTIAL",
-      placements: Object.freeze([...assignment.placements]),
-      candidates: Object.freeze([...generation.candidates]),
+      placements: Object.freeze(placements),
+      candidates: Object.freeze(candidates),
       rejected: Object.freeze(rejected),
       unresolvedPersonIds: Object.freeze(unresolvedPersonIds),
       diagnostics: Object.freeze(diagnostics),
       metrics: Object.freeze({
         requestedPersonCount: expectedPeople.length,
-        candidateCount: generation.candidates.length,
-        placedLabelCount: assignment.placements.length,
+        candidateCount: candidates.length,
+        placedLabelCount: placements.length,
         unresolvedLabelCount: unresolvedPersonIds.length,
         woodObstacleCount: obstacles.length,
-        boundaryRejectedCandidateCount: generation.rejected.length,
-        collisionRejectedCandidateCount: assignment.rejected.filter(
+        boundaryRejectedCandidateCount: rejected.filter(
+          (item) => item.reason === "OUT_OF_BOUNDS",
+        ).length,
+        collisionRejectedCandidateCount: rejected.filter(
           (item) => item.reason === "COLLISION",
         ).length,
       }),
