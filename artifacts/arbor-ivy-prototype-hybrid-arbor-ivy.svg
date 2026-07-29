@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -290 8200 6390">
+<style>
+.bg{fill:#f8faf7}.boundary{fill:#fff;stroke:#cbd5c0;stroke-width:2;stroke-dasharray:10 8}
+path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.trunk{stroke:#243b2f}.primary{stroke:#355f42}.secondary{stroke:#4d7c5a}.twig{stroke:#719879}
+.title{font:700 42px "DejaVu Sans";fill:#17261d}.subtitle{font:24px "DejaVu Sans";fill:#4b6354}
+</style>
+<rect class="bg" x="-100" y="-290" width="8200" height="6390"/>
+<text class="title" x="0" y="-175">3. Hybrid Arbor–Ivy</text>
+<text class="subtitle" x="0" y="-125">Oak hierarchy + ivy space seeking + Local Relaxation (relaxed)</text>
+<path class="boundary" d="M 0 0 L 8000 0 L 8000 6000 L 0 6000 Z"/>
+<g><path class="trunk" data-branch-id="trunk:trunk-base:56b:trunk-junction:56c" d="M 4000 5928 C 4016.328 5635.2 4039.188 5225.28 4054.428 4952" stroke-width="21.36"/>
+<path class="trunk" data-branch-id="trunk:trunk-junction:56c:trunk-junction:56d" d="M 4054.428 4952 C 4054.428 4659.2 4054.428 4249.28 4054.428 3976" stroke-width="18.583"/>
+<path class="trunk" data-branch-id="trunk:trunk-junction:56d:trunk-terminal:56e" d="M 4054.428 3976 C 4053.869 3960.189 4053.087 3938.053 4052.565 3923.296" stroke-width="15.807"/>
+<path class="primary" data-branch-id="layered:2:3" d="M 4054.428 3976 C 3495.133 3904.837 3032.135 3434.811 2896.931 3105.583" stroke-width="15.176"/>
+<path class="secondary" data-branch-id="layered:3:4" d="M 2896.931 3105.583 C 2511.703 3134.76 1976.568 3176.205 1622.799 3204.262" stroke-width="10.205"/>
+<path class="twig" data-branch-id="layered:111:5" d="M 1622.799 3204.262 C 1450.552 3196.39 1203.821 3185.781 1035.344 3179.002" stroke-width="7.229"/>
+<path class="twig" data-branch-id="layered:112:6" d="M 1035.344 3179.002 C 942.493 3110.123 806.911 3013.366 712.53 2948.626" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:113:7" d="M 1035.344 3179.002 C 959.944 3092.252 848.804 2970.326 770.725 2888.701" stroke-width="4.956"/>
+<path class="twig" data-branch-id="layered:114:8" d="M 770.725 2888.701 C 713.293 2795.017 627.502 2662.335 566.458 2572.791" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:132:9" d="M 770.725 2888.701 C 728.218 2773.593 668.71 2612.442 629.038 2505.009" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:143:10" d="M 1035.344 3179.002 C 987.34 3042.724 920.133 2851.936 875.328 2724.744" stroke-width="5.044"/>
+<path class="twig" data-branch-id="layered:144:11" d="M 875.328 2724.744 C 822.512 2638.202 743.412 2514.861 686.994 2431.076" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:193:12" d="M 875.328 2724.744 C 838.584 2614.467 782.061 2457.727 740.749 2351.553" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:195:13" d="M 875.328 2724.744 C 853.551 2589.274 818.066 2397.088 790.841 2267.157" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:212:14" d="M 875.328 2724.744 C 867.607 2562.878 851.894 2333.56 837.916 2178.749" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:4:15" d="M 1622.799 3204.262 C 1579.359 3006.915 1513.491 2728.212 1465.97 2540.684" stroke-width="7.401"/>
+<path class="twig" data-branch-id="layered:5:16" d="M 1465.97 2540.684 C 1346.335 2493.708 1174.482 2424.432 1056.796 2375.742" stroke-width="5.081"/>
+<path class="twig" data-branch-id="layered:27:17" d="M 1056.796 2375.742 C 1004.569 2289.21 931.453 2168.065 882.708 2087.302" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:52:18" d="M 1056.796 2375.742 C 1017.561 2261.183 962.633 2100.801 926.014 1993.879" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:6:19" d="M 1056.796 2375.742 C 1033.306 2235.605 996.296 2035.625 968.677 1899.599" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:65:20" d="M 1056.796 2375.742 C 1046.077 2207.504 1027.076 1968.046 1011.554 1805.605" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:74:21" d="M 1056.796 2375.742 C 1059.169 2179.823 1058.624 1901.486 1055.5 1713.033" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:75:22" d="M 1465.97 2540.684 C 1408.065 2397.359 1323.307 2192.491 1264.165 2052.905" stroke-width="4.956"/>
+<path class="twig" data-branch-id="layered:76:23" d="M 1264.165 2052.905 C 1217.627 1927.192 1149.239 1746.623 1101.338 1622.978" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:80:24" d="M 1264.165 2052.905 C 1232.083 1901.301 1184.064 1684.394 1149.835 1536.46" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:88:25" d="M 1465.97 2540.684 C 1477.219 2311.67 1492.967 1991.049 1503.466 1777.302" stroke-width="5.044"/>
+<path class="twig" data-branch-id="layered:104:26" d="M 1503.466 1777.302 C 1412.931 1680.432 1286.183 1544.814 1201.683 1454.402" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:110:27" d="M 1503.466 1777.302 C 1431.351 1661.019 1328.036 1493.142 1257.479 1377.594" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:89:28" d="M 1503.466 1777.302 C 1449.328 1639.785 1371.307 1442.122 1317.702 1306.677" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:99:29" d="M 1503.466 1777.302 C 1467.239 1616.749 1416.521 1391.974 1382.709 1242.124" stroke-width="3.476"/>
+<path class="secondary" data-branch-id="layered:315:30" d="M 2896.931 3105.583 C 2901.852 2811.317 2913.427 2396.279 2924.491 2117.396" stroke-width="9.853"/>
+<path class="twig" data-branch-id="layered:316:31" d="M 2924.491 2117.396 C 2714.554 2044.907 2422.771 1938.243 2229.77 1863.434" stroke-width="7.057"/>
+<path class="twig" data-branch-id="layered:317:32" d="M 2229.77 1863.434 C 2099.423 1768.25 1916.578 1629.402 1794.427 1532.846" stroke-width="4.956"/>
+<path class="twig" data-branch-id="layered:318:33" d="M 1794.427 1532.846 C 1691.913 1428.258 1548.394 1281.837 1452.715 1184.222" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:323:34" d="M 1794.427 1532.846 C 1714.437 1412.913 1602.451 1245.006 1527.794 1133.069" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:325:35" d="M 2229.77 1863.434 C 2147.027 1737.16 2031.145 1554.777 1953.86 1429.188" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:350:36" d="M 2229.77 1863.434 C 2179.688 1718.837 2109.735 1510.802 2063.216 1368.114" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:353:37" d="M 2924.491 2117.396 C 2802.586 1991.642 2634.431 1810.581 2524.123 1686.3" stroke-width="6.806"/>
+<path class="twig" data-branch-id="layered:354:38" d="M 2524.123 1686.3 C 2418.432 1578.479 2271.296 1421.992 2173.798 1313.712" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:379:39" d="M 2924.491 2117.396 C 2918.718 1937.806 2913.575 1681.613 2912.244 1507.412" stroke-width="7.104"/>
+<path class="twig" data-branch-id="layered:380:40" d="M 2912.244 1507.412 C 2722.84 1438.832 2459.193 1337.43 2284.512 1265.979" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:381:41" d="M 2912.244 1507.412 C 2756.849 1422.604 2539.296 1303.872 2394.261 1224.718" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:442:42" d="M 2912.244 1507.412 C 2789.163 1412.053 2616.849 1278.55 2501.973 1189.548" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:465:43" d="M 2912.244 1507.412 C 2819.194 1406.921 2690.84 1260.972 2606.638 1159.913" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:474:44" d="M 2912.244 1507.412 C 2849.318 1399.444 2763.254 1243.072 2707.33 1135.097" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:480:45" d="M 2912.244 1507.412 C 2878.013 1393.157 2832.232 1228.026 2803.241 1114.243" stroke-width="4.829"/>
+<path class="secondary" data-branch-id="layered:node_1782282658344:46" d="M 2896.931 3105.583 C 3134.136 2703.059 3471.04 2136.67 3699.084 1757.038" stroke-width="9.633"/>
+<path class="twig" data-branch-id="layered:node_1782282678742:47" d="M 3699.084 1757.038 C 3578.571 1648.128 3413.583 1491.476 3306.254 1384.058" stroke-width="6.948"/>
+<path class="twig" data-branch-id="layered:node_1782282723799:48" d="M 3306.254 1384.058 C 3180.627 1301.298 3007.353 1180.475 2893.697 1096.385" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782282733940:49" d="M 3306.254 1384.058 C 3207.833 1292.981 3070.044 1165.472 2978.184 1080.466" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782282945245:50" d="M 3306.254 1384.058 C 3231.286 1288.454 3126.329 1154.608 3056.358 1065.377" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782284677607:51" d="M 3699.084 1757.038 C 3645.774 1629.637 3574.99 1447.21 3530.55 1322.686" stroke-width="7.057"/>
+<path class="twig" data-branch-id="layered:node_1782284688301:52" d="M 3530.55 1322.686 C 3407.674 1244.262 3238.627 1129.726 3128.057 1049.982" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782288116664:53" d="M 3530.55 1322.686 C 3427.215 1239.192 3285.572 1117.589 3193.305 1033.156" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782288508286:54" d="M 3530.55 1322.686 C 3444.888 1233.371 3328.028 1103.645 3252.312 1013.814" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782288964233:55" d="M 3530.55 1322.686 C 3460.812 1226.495 3366.278 1087.164 3305.468 990.944" stroke-width="4.829"/>
+<path class="twig" data-branch-id="layered:node_1782289388874:56" d="M 3530.55 1322.686 C 3475.153 1218.291 3400.721 1067.49 3353.33 963.635" stroke-width="4.829"/>
+<path class="primary" data-branch-id="layered:487:57" d="M 4054.428 4952 C 4665.695 4790.536 5175.084 3700.658 5327.901 2933.706" stroke-width="15.176"/>
+<path class="secondary" data-branch-id="layered:488:58" d="M 5327.901 2933.706 C 5335.999 2704.274 5347.335 2383.069 5354.893 2168.932" stroke-width="10.598"/>
+<path class="twig" data-branch-id="layered:489:59" d="M 5354.893 2168.932 C 5345.797 2010.148 5333.063 1787.85 5324.574 1639.652" stroke-width="7.811"/>
+<path class="twig" data-branch-id="layered:490:60" d="M 5324.574 1639.652 C 5255.52 1512.352 5156.115 1329.242 5087.895 1203.677" stroke-width="5.373"/>
+<path class="twig" data-branch-id="layered:491:61" d="M 5087.895 1203.677 C 5072.793 1121.695 5049.031 1001.97 5031.319 918.618" stroke-width="3.632"/>
+<path class="twig" data-branch-id="layered:492:62" d="M 5031.319 918.618 C 5064.682 841.628 5109.092 728.736 5137.057 649.828" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:497:63" d="M 5031.319 918.618 C 5085.404 853.205 5158.876 756.498 5206.252 688.363" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:500:64" d="M 5031.319 918.618 C 5107.409 862.924 5211.75 779.797 5279.749 720.696" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:517:65" d="M 5031.319 918.618 C 5129.116 867.183 5266.032 795.175 5357.309 747.169" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:523:66" d="M 5087.895 1203.677 C 5156.191 1135.182 5251.805 1039.288 5315.547 975.359" stroke-width="3.658"/>
+<path class="twig" data-branch-id="layered:524:67" d="M 5315.547 975.359 C 5353.708 917.036 5405.383 830.065 5438.583 768.285" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:528:68" d="M 5315.547 975.359 C 5379.003 921.98 5466.184 841.9 5523.121 784.693" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:534:69" d="M 5315.547 975.359 C 5405.111 925.745 5528.943 850.906 5610.385 797.17" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:536:70" d="M 5315.547 975.359 C 5431.848 928.596 5593.217 857.718 5699.76 806.603" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:539:71" d="M 5315.547 975.359 C 5458.056 926.939 5657.568 859.15 5790.576 813.957" stroke-width="2.503"/>
+<path class="twig" data-branch-id="layered:542:72" d="M 5087.895 1203.677 C 5231.177 1147.224 5429.704 1062.985 5560.579 1003.108" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:557:73" d="M 5087.895 1203.677 C 5256.577 1147.394 5492.73 1068.597 5650.166 1016.066" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:566:74" d="M 5087.895 1203.677 C 5284.326 1152.289 5559.329 1080.345 5742.664 1032.383" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:570:75" d="M 5087.895 1203.677 C 5313.961 1162.229 5628.718 1098.877 5837.316 1052.839" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:576:76" d="M 5087.895 1203.677 C 5342.674 1169.834 5697.748 1117.093 5933.308 1078.102" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:586:77" d="M 5324.574 1639.652 C 5517.885 1597.473 5786.924 1533.056 5965.142 1486.278" stroke-width="5.081"/>
+<path class="twig" data-branch-id="layered:587:78" d="M 5965.142 1486.278 C 5984.7 1377.003 6011.852 1218.424 6029.788 1108.707" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:651:79" d="M 5965.142 1486.278 C 6013.415 1387.908 6080.93 1244.59 6125.891 1145.045" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:654:80" d="M 5965.142 1486.278 C 6041.759 1400.599 6149.12 1275.049 6220.763 1187.349" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:668:81" d="M 5965.142 1486.278 C 6069.674 1411.102 6216.019 1305.856 6313.582 1235.691" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:680:82" d="M 5965.142 1486.278 C 6096.674 1427.388 6280.82 1344.942 6403.584 1289.978" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:688:83" d="M 5324.574 1639.652 C 5678.865 1712.387 6174.211 1808.655 6503.97 1868.862" stroke-width="5.115"/>
+<path class="twig" data-branch-id="layered:689:84" d="M 6503.97 1868.862 C 6498.594 1717.002 6492.76 1499.06 6490.081 1349.952" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:690:85" d="M 6503.97 1868.862 C 6523.179 1736.532 6551.953 1545.996 6572.479 1415.205" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:751:86" d="M 6503.97 1868.862 C 6546.392 1757.475 6607.85 1596.328 6650.299 1485.18" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:797:87" d="M 6503.97 1868.862 C 6568.127 1779.625 6660.197 1649.564 6723.183 1559.194" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:816:88" d="M 6503.97 1868.862 C 6588.318 1802.744 6708.834 1705.132 6790.912 1636.454" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:818:89" d="M 6503.97 1868.862 C 6608.8 1823.026 6755.563 1758.856 6853.405 1716.076" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:839:90" d="M 5354.893 2168.932 C 5748.017 2306.944 6298.39 2500.161 6665.306 2628.972" stroke-width="7.148"/>
+<path class="twig" data-branch-id="layered:840:91" d="M 6665.306 2628.972 C 6693.669 2488.815 6737.576 2288.891 6769.847 2152.962" stroke-width="4.901"/>
+<path class="twig" data-branch-id="layered:841:92" d="M 6769.847 2152.962 C 6809.644 2049.358 6868.812 1899.902 6910.723 1797.115" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:876:93" d="M 6665.306 2628.972 C 6735.724 2546.936 6838.988 2429.007 6911.173 2348.19" stroke-width="5.044"/>
+<path class="twig" data-branch-id="layered:877:94" d="M 6911.173 2348.19 C 6923.884 2210.107 6945.68 2012.872 6963.07 1878.585" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:908:95" d="M 6911.173 2348.19 C 6938.093 2234.266 6979.93 2071.011 7010.785 1959.488" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:922:96" d="M 6911.173 2348.19 C 6951.059 2257.96 7011.187 2128.035 7054.333 2038.843" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:935:97" d="M 6911.173 2348.19 C 6966.109 2278.446 7043.02 2180.805 7094.294 2115.711" stroke-width="3.476"/>
+<path class="secondary" data-branch-id="layered:949:98" d="M 5327.901 2933.706 C 5724.99 3035.262 6280.915 3177.441 6651.532 3272.227" stroke-width="9.726"/>
+<path class="twig" data-branch-id="layered:950:99" d="M 6651.532 3272.227 C 6728.632 3186.499 6842.03 3067.737 6921.527 2989.46" stroke-width="7.302"/>
+<path class="twig" data-branch-id="layered:1027:100" d="M 6921.527 2989.46 C 6954.742 2858.176 7001.243 2674.377 7032.244 2551.845" stroke-width="4.956"/>
+<path class="twig" data-branch-id="layered:1028:101" d="M 7032.244 2551.845 C 7058.522 2445.077 7100.144 2292.775 7131.344 2189.219" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:1043:102" d="M 7032.244 2551.845 C 7068.925 2465.772 7125.203 2342.604 7166.24 2258.588" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:951:103" d="M 6921.527 2989.46 C 6976.361 2905.135 7058.689 2786.402 7117.544 2706.762" stroke-width="5.044"/>
+<path class="twig" data-branch-id="layered:952:104" d="M 7117.544 2706.762 C 7138.521 2593.203 7173.067 2432.086 7199.795 2323.151" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:964:105" d="M 7117.544 2706.762 C 7152.14 2609.444 7200.574 2473.2 7232.863 2382.371" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:971:106" d="M 7117.544 2706.762 C 7162.173 2625.491 7224.654 2511.711 7266.308 2435.858" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:977:107" d="M 7117.544 2706.762 C 7168.769 2640.975 7245.814 2547.155 7300.984 2483.38" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:978:108" d="M 6921.527 2989.46 C 6999.083 2935.307 7113.251 2859.126 7193.353 2808.077" stroke-width="4.956"/>
+<path class="twig" data-branch-id="layered:1026:109" d="M 7193.353 2808.077 C 7232.779 2724.077 7293.41 2605.127 7337.712 2524.863" stroke-width="3.476"/>
+<path class="twig" data-branch-id="layered:979:110" d="M 7193.353 2808.077 C 7244.626 2734.669 7321.866 2630.646 7377.258 2560.402" stroke-width="3.476"/></g>
+</svg>

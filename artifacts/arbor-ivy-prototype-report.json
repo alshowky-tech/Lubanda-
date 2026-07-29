@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "milestone": "BOTANICAL_TERRITORY_GROWTH_PROTOTYPE",
+  "selectionStatus": "SELECTED_AFTER_VISUAL_REVIEW",
+  "selectedVariant": "hybrid-arbor-ivy",
+  "visualSelectionRationale": "The hybrid preserves the oak-like dominant trunk and primary limbs while breaking the Arbor-only terminal wall into visibly irregular, multi-directional crown edges. The current engine remains visibly graph-like.",
+  "sourceFileSha256": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "subsetPersonCount": 109,
+  "selectedRootId": "1",
+  "majorLineageCount": 2,
+  "archetype": "oak",
+  "variants": [
+    {
+      "id": "current",
+      "branchCount": 111,
+      "intersectionCount": 0,
+      "deterministicFingerprint": "fc8e804db1373cc55f2bd8dd0e17949aa470cf7c0ebe385d0c6ed02b23a974d3"
+    },
+    {
+      "id": "arbor-only",
+      "branchCount": 111,
+      "intersectionCount": 0,
+      "deterministicFingerprint": "932aceda73c9580f2d51807754666bfb4828d5f539433def4ab92d257383664f"
+    },
+    {
+      "id": "hybrid-arbor-ivy",
+      "branchCount": 111,
+      "intersectionCount": 0,
+      "deterministicFingerprint": "028125bcd1b1dfbaa91e72a43966eaff828d5f6ed2a150eb273fb567e705101a"
+    }
+  ],
+  "localRelaxation": {
+    "status": "RELAXED",
+    "movedBranchCount": 78,
+    "deterministicFingerprint": "d56b92427bf7f9c943f14803f827df6d81ebea8ade147567d17cd33c292758c0"
+  },
+  "artifacts": {
+    "currentSvg": "artifacts/arbor-ivy-prototype-current.svg",
+    "currentPng": "artifacts/arbor-ivy-prototype-current.png",
+    "arbor-onlySvg": "artifacts/arbor-ivy-prototype-arbor-only.svg",
+    "arbor-onlyPng": "artifacts/arbor-ivy-prototype-arbor-only.png",
+    "hybrid-arbor-ivySvg": "artifacts/arbor-ivy-prototype-hybrid-arbor-ivy.svg",
+    "hybrid-arbor-ivyPng": "artifacts/arbor-ivy-prototype-hybrid-arbor-ivy.png",
+    "comparisonSvg": "artifacts/arbor-ivy-prototype-comparison.svg",
+    "comparisonPng": "artifacts/arbor-ivy-prototype-comparison.png"
+  },
+  "deterministicFingerprint": "a02d8f21cf0fb334b76d0f5a3b908c44650b3ec1007533b6ff9652c8ff39357d"
+}

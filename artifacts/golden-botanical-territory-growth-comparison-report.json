@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "1.0",
+  "milestone": "BOTANICAL_TERRITORY_GROWTH",
+  "sourceFileName": "ديوان_آل_الشوكي_شجرة_الأنساب_2026 (3).xlsx",
+  "sourceFileSha256Before": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "sourceFileSha256After": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "sourceDatasetUnchanged": true,
+  "totalPeople": 1386,
+  "totalBranches": 1388,
+  "movedBranches": 1388,
+  "invariants": {
+    "genealogyUnchanged": true,
+    "topologyUnchanged": true,
+    "parentChildRelationshipsUnchanged": true,
+    "branchIdentitiesUnchanged": true,
+    "labelsUnchanged": true,
+    "deterministicReplayMatched": true
+  },
+  "validation": {
+    "afterSkeletonAccepted": true,
+    "branchIntersections": 0,
+    "outOfBoundsBranches": 0,
+    "labelOverlaps": 0,
+    "woodPenetrations": 0,
+    "unresolvedLabels": 0
+  },
+  "metrics": {
+    "territoryOccupancy": {
+      "before": 0.496094,
+      "after": 0.447266
+    },
+    "branchAngleDistribution": {
+      "before": {
+        "right": 4,
+        "downRight": 39,
+        "down": 1308,
+        "downLeft": 31,
+        "left": 3,
+        "upLeft": 0,
+        "up": 0,
+        "upRight": 0
+      },
+      "after": {
+        "right": 13,
+        "downRight": 2,
+        "down": 0,
+        "downLeft": 0,
+        "left": 14,
+        "upLeft": 784,
+        "up": 53,
+        "upRight": 519
+      }
+    },
+    "branchLengthDistribution": {
+      "before": {
+        "count": 1388,
+        "minimum": 169.497646,
+        "maximum": 4942.730011,
+        "mean": 538.99881,
+        "median": 569.777147,
+        "p90": 573.256124,
+        "p95": 594.677973,
+        "total": 748130.348126
+      },
+      "after": {
+        "count": 1388,
+        "minimum": 84.161058,
+        "maximum": 4610.62768,
+        "mean": 385.021816,
+        "median": 375.683273,
+        "p90": 473.173022,
+        "p95": 500.750254,
+        "total": 534410.28016
+      }
+    },
+    "branchHierarchyStatistics": {
+      "trunk": 3,
+      "primary": 2,
+      "secondary": 5,
+      "majorLimbs": 42,
+      "twigs": 437,
+      "terminal": 902
+    },
+    "emptySpaceUtilization": {
+      "before": 0.414931,
+      "after": 0.3125
+    },
+    "averagePathCurvature": {
+      "before": 0.000011,
+      "after": 0.001519
+    },
+    "numberOfPrimaryBranches": 2,
+    "numberOfSecondaryBranches": 5,
+    "averageTwigDepth": 7.322616
+  },
+  "artifacts": {
+    "beforeSvg": "artifacts/golden-botanical-territory-growth-before.svg",
+    "afterSvg": "artifacts/golden-botanical-territory-growth-after.svg",
+    "beforePng": "artifacts/golden-botanical-territory-growth-before.png",
+    "afterPng": "artifacts/golden-botanical-territory-growth-after.png",
+    "overlaySvg": "artifacts/golden-botanical-territory-growth-overlay.svg",
+    "beforeSvgSha256": "92d87382615f885e4c1634b117e2ceb54be0eec1f14ff5721f84c1125d0e8cca",
+    "afterSvgSha256": "abb2d7aa6766dcdaee0014abf671b9277dbc5f48a960cd25d481227b589162d3",
+    "beforePngSha256": "5a50dc973f43d0f8bbbb1bb82fea0502efbf091c67872fe8cc05dd2a0b750d0e",
+    "afterPngSha256": "7a686e52fce1c345bf40d77a1822b70d2bee91082a65da08331bbda4210843e5",
+    "overlaySvgSha256": "bf2624f1fd142fb692c114f389b18b189dc00fec38139d3ee401c7cada88d3e0"
+  },
+  "deterministicFingerprint": "9fc7cd35617bb71424b3aae4e60ff780192d1fb14729a53f05c07cf2987693b3",
+  "territoryGrowthDeterministicFingerprint": "724f801afe3479d0eaa0773872397893e1f0b6d4c92fa183862a11b228da8056",
+  "localRelaxation": {
+    "status": "UNCHANGED",
+    "movedBranchCount": 0,
+    "acceptedIterationCount": 0,
+    "deterministicFingerprint": "1debae3411c1152e24ebe8f399586f2252aecf7a624ff0e3a5d6c3f7539709c7"
+  },
+  "deterministicReplayMatched": true,
+  "totalRuntimeMilliseconds": 14653.537563,
+  "peakMemoryUsageBytes": 947970048,
+  "stageRuntimesMilliseconds": {
+    "readWorkbook": 6.236,
+    "importWorkbook": 234.933,
+    "validateGenealogy": 4.566,
+    "demand": 59.605,
+    "territories": 7.134,
+    "growExistingSkeleton": 486.365,
+    "placeBeforeLabels": 2718.538,
+    "growBotanicalTerritories": 256.828,
+    "replayBotanicalTerritories": 239.779,
+    "placeGrowthLabels": 2532.964,
+    "placeReplayGrowthLabels": 2506.345,
+    "localRelaxation": 711.45,
+    "replayLocalRelaxation": 777.568,
+    "beforeSvg": 42.606,
+    "afterSvg": 49.055,
+    "replaySvg": 34.668,
+    "beforePng": 1177.594,
+    "afterPng": 1224.913,
+    "replayPng": 1204.044,
+    "overlaySvg": 25.594,
+    "validateAfterSkeleton": 88.679
+  }
+}
