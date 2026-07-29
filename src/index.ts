@@ -6,6 +6,7 @@ export * from "./core/diagnostics/index.js";
 export * from "./core/display-names/index.js";
 export * from "./core/genealogy/index.js";
 export * from "./core/geometry/index.js";
+export * from "./core/growth/index.js";
 export * from "./core/import/index.js";
 export * from "./core/layout/index.js";
 export * from "./core/labels/index.js";

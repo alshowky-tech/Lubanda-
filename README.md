@@ -1,4 +1,4 @@
-# Lubanda Core — Milestone 4.1.2
+# Lubanda Core — Botanical Growth Engine
 
 This repository preserves the accepted genealogy, territory, and skeleton
 foundations and implements Milestone 4.1.2 — Label Integration with Skeleton
@@ -6,8 +6,10 @@ Geometry:
 
 `Accepted Skeleton → Deterministic Label Anchors → Boundary Filtering → Wood/Label Collision Queries → Candidate Assignment → Unresolved-Label Diagnostics`
 
-It intentionally contains no renderer, UI, persistence layer, export engine,
-AI adapter, Arabic shaping/text measurement engine, or incremental reflow.
+The latest increment adds deterministic local relaxation after accepted
+skeleton and label layout. It intentionally contains no production renderer,
+UI, persistence layer, AI adapter, Arabic shaping engine, or incremental
+reflow.
 
 ## Pipeline
 
@@ -30,7 +32,13 @@ Best Candidate Selection
     ↓
 Skeleton Validation (structural checks)
     ↓
-Frozen Skeleton Plan (deep-frozen DTO + SHA-256 fingerprint)
+Deterministic Label Layout
+    ↓
+Botanical Local Relaxation (bounded Bézier control-point movement)
+    ↓
+Hard Geometry + Label Revalidation
+    ↓
+Frozen Relaxed Skeleton Plan (deep-frozen DTO + SHA-256 fingerprint)
 ```
 
 ## Commands
@@ -68,3 +76,20 @@ assigns non-overlapping labels. A partial result carries one deterministic
 
 See `docs/milestone-4-1-2-completion-report.md` for the acceptance evidence and
 scope exclusions.
+
+## Botanical local relaxation
+
+The first Space Optimization increment moves only interior Bézier control
+points toward their assigned territory centroids. Endpoints, junctions,
+topology, branch identity, and genealogy remain locked. Each deterministic
+batch is accepted only when its score improves and complete skeleton and label
+validation still pass.
+
+The Golden Dataset proof keeps all 1,386 label placements fixed and highlights
+each moved branch in a deterministic overlay. Run it with:
+
+```bash
+npm run golden:e2e -- /path/to/golden-dataset.xlsx
+```
+
+See `docs/botanical-growth-local-relaxation-completion-report.md` and ADR 0005.

@@ -19,6 +19,7 @@
     "benchmark:official": "node --import tsx scripts/benchmark-official-territories.ts",
     "validate:golden": "node --import tsx scripts/validate-golden-dataset.ts",
     "preview:golden": "node --import tsx scripts/export-golden-preview.ts",
+    "golden:e2e": "node --import tsx scripts/compare-golden-local-relaxation.ts",
     "manifest": "node --import tsx scripts/generate-file-manifest.ts"
   },
   "dependencies": {
