@@ -60,6 +60,11 @@ export interface LabelConfig {
   readonly maximumRotationDegrees: number;
 }
 
+export interface DisplayNameConfig {
+  readonly removeHonorificPrefixes: boolean;
+  readonly honorificPrefixes: readonly string[];
+}
+
 export interface StabilityConfig {
   readonly priorLayoutWeight: number;
   readonly maximumUnrelatedMovement: number;
@@ -78,6 +83,7 @@ export interface EngineConfiguration {
   readonly skeleton: SkeletonConfig;
   readonly collision: CollisionConfig;
   readonly labels: LabelConfig;
+  readonly displayNames: DisplayNameConfig;
   readonly stability: StabilityConfig;
   readonly performance: PerformanceConfig;
 }

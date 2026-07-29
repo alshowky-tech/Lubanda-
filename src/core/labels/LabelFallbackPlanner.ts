@@ -7,6 +7,7 @@ import type { Bounds, Polygon, Vec2 } from "../geometry/types.js";
 import type { SkeletonBranch } from "../skeleton/types.js";
 import { boundsInsidePolygon } from "./LabelCandidateGenerator.js";
 import { LabelCollisionQuery } from "./LabelCollisionQuery.js";
+import { measureLabelText } from "./LabelTextMetrics.js";
 import type {
   LabelCandidate,
   LabelObstacle,
@@ -17,11 +18,6 @@ import type {
 const POSITION_EPSILON = 1e-6;
 const MAX_LANE_ATTEMPTS = 512;
 const MAX_UNRESOLVED_EVIDENCE = 16;
-
-interface LabelDimensions {
-  readonly width: number;
-  readonly height: number;
-}
 
 export interface LabelFallbackInput {
   readonly graph: GenealogyGraph;
@@ -40,28 +36,9 @@ export interface LabelFallbackResult {
   readonly unresolvedPersonIds: readonly PersonId[];
 }
 
-const estimateDimensions = (
-  name: string,
-  configuration: EngineConfiguration,
-): LabelDimensions => {
-  const fontSize = configuration.labels.minimumFontSize;
-  return {
-    width: Math.max(
-      fontSize * 2,
-      [...name].length * configuration.demand.estimatedCharacterWidth +
-        configuration.demand.personPadding * 2,
-    ),
-    height: Math.max(
-      fontSize,
-      configuration.demand.estimatedLabelHeight +
-        configuration.demand.personPadding * 2,
-    ),
-  };
-};
-
 const centeredBounds = (
   center: Vec2,
-  dimensions: LabelDimensions,
+  dimensions: Pick<ReturnType<typeof measureLabelText>, "width" | "height">,
 ): Bounds => ({
   minX: center.x - dimensions.width / 2,
   minY: center.y - dimensions.height / 2,
@@ -116,6 +93,7 @@ const toPlacement = (candidate: LabelCandidate): LabelPlacement => ({
   placementId: `label:${candidate.personId}`,
   candidateId: candidate.candidateId,
   personId: candidate.personId,
+  displayName: candidate.displayName,
   anchor: { ...candidate.anchor },
   bounds: { ...candidate.bounds },
   rotationDegrees: candidate.rotationDegrees,
@@ -162,7 +140,7 @@ export class LabelFallbackPlanner {
         return {
           personId,
           branch,
-          dimensions: estimateDimensions(person.name, configuration),
+          dimensions: measureLabelText(person.name, configuration),
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null)
@@ -212,6 +190,7 @@ export class LabelFallbackPlanner {
             candidateId:
               `label-candidate:${item.personId}:fallback:${laneIndex}:${candidateOrdinal}`,
             personId: item.personId,
+            displayName: item.dimensions.displayName,
             sourceBranchId: item.branch.id,
             anchor: { x, y },
             bounds,

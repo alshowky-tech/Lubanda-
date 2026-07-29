@@ -58,6 +58,20 @@ export const DEFAULT_ENGINE_CONFIGURATION: EngineConfiguration = Object.freeze({
     minimumFontSize: 12,
     maximumRotationDegrees: 20,
   }),
+  displayNames: Object.freeze({
+    removeHonorificPrefixes: true,
+    honorificPrefixes: Object.freeze([
+      "السيد",
+      "السيّد",
+      "سيدي",
+      "الشيخ",
+      "الحاج",
+      "الدكتور",
+      "د.",
+      "المهندس",
+      "الأستاذ",
+    ]),
+  }),
   stability: Object.freeze({
     priorLayoutWeight: 0.75,
     maximumUnrelatedMovement: 20,

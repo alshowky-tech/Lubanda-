@@ -18,6 +18,7 @@ const toPlacement = (candidate: LabelCandidate): LabelPlacement => ({
   placementId: `label:${candidate.personId}`,
   candidateId: candidate.candidateId,
   personId: candidate.personId,
+  displayName: candidate.displayName,
   anchor: { ...candidate.anchor },
   bounds: { ...candidate.bounds },
   rotationDegrees: candidate.rotationDegrees,

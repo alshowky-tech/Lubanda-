@@ -3,6 +3,7 @@ export * from "./core/contracts/index.js";
 export * from "./core/demand/index.js";
 export * from "./core/determinism/index.js";
 export * from "./core/diagnostics/index.js";
+export * from "./core/display-names/index.js";
 export * from "./core/genealogy/index.js";
 export * from "./core/geometry/index.js";
 export * from "./core/import/index.js";

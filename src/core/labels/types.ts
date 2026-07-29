@@ -10,6 +10,7 @@ export type LabelPlacementId = string;
 export interface LabelCandidate {
   readonly candidateId: LabelCandidateId;
   readonly personId: PersonId;
+  readonly displayName: string;
   readonly sourceBranchId?: SkeletonBranchId;
   readonly anchor: Vec2;
   readonly bounds: Bounds;
@@ -23,6 +24,7 @@ export interface LabelPlacement {
   readonly placementId: LabelPlacementId;
   readonly candidateId: LabelCandidateId;
   readonly personId: PersonId;
+  readonly displayName: string;
   readonly anchor: Vec2;
   readonly bounds: Bounds;
   readonly rotationDegrees: number;

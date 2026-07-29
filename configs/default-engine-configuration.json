@@ -56,6 +56,20 @@
     "minimumFontSize": 12,
     "maximumRotationDegrees": 20
   },
+  "displayNames": {
+    "removeHonorificPrefixes": true,
+    "honorificPrefixes": [
+      "السيد",
+      "السيّد",
+      "سيدي",
+      "الشيخ",
+      "الحاج",
+      "الدكتور",
+      "د.",
+      "المهندس",
+      "الأستاذ"
+    ]
+  },
   "stability": {
     "priorLayoutWeight": 0.75,
     "maximumUnrelatedMovement": 20

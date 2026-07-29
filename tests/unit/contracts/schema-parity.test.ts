@@ -37,12 +37,17 @@ describe("schema parity", () => {
     expect(ajv.validate(engineSchema, jsonDefault)).toBe(true);
   });
 
-  it("requires demand and rejects unknown configuration keys", () => {
+  it("requires demand and display-name settings and rejects unknown keys", () => {
     const withoutDemand = structuredClone(
       DEFAULT_ENGINE_CONFIGURATION,
     ) as unknown as Record<string, unknown>;
     delete withoutDemand.demand;
     expect(ajv.validate(engineSchema, withoutDemand)).toBe(false);
+    const withoutDisplayNames = structuredClone(
+      DEFAULT_ENGINE_CONFIGURATION,
+    ) as unknown as Record<string, unknown>;
+    delete withoutDisplayNames.displayNames;
+    expect(ajv.validate(engineSchema, withoutDisplayNames)).toBe(false);
     expect(
       ajv.validate(engineSchema, {
         ...DEFAULT_ENGINE_CONFIGURATION,

@@ -5,6 +5,7 @@ import { intersectSegments } from "../geometry/segments.js";
 import type { Bounds, Polygon, Vec2 } from "../geometry/types.js";
 import { add, normalize, scale } from "../geometry/vec2.js";
 import type { SkeletonBranch } from "../skeleton/types.js";
+import { measureLabelText } from "./LabelTextMetrics.js";
 import type {
   LabelCandidate,
   LabelCandidateGenerationResult,
@@ -158,16 +159,8 @@ export class LabelCandidateGenerator {
       }
 
       const fontSize = configuration.labels.minimumFontSize;
-      const width = Math.max(
-        fontSize * 2,
-        [...person.name].length * configuration.demand.estimatedCharacterWidth +
-          configuration.demand.personPadding * 2,
-      );
-      const height = Math.max(
-        fontSize,
-        configuration.demand.estimatedLabelHeight +
-          configuration.demand.personPadding * 2,
-      );
+      const labelText = measureLabelText(person.name, configuration);
+      const { width, height } = labelText;
       ANCHOR_SITES.forEach((site, siteIndex) => {
         const origin = evaluateCubicBezier(branch.curve, site.parameter);
         const tangent = safeTangent(branch, site.parameter);
@@ -200,6 +193,7 @@ export class LabelCandidateGenerator {
             candidateId:
               `label-candidate:${branch.ownerPersonId}:${site.id}:${direction.id}`,
             personId: branch.ownerPersonId,
+            displayName: labelText.displayName,
             sourceBranchId: branch.id,
             anchor,
             bounds: rotatedBounds(anchor, width, height, rotationDegrees),

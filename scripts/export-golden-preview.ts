@@ -55,6 +55,10 @@ const reportPath = path.join(
   outputDirectory,
   "golden-visual-validation-report.json",
 );
+const displayNameComparisonReportPath = path.join(
+  outputDirectory,
+  "golden-display-name-comparison-report.json",
+);
 const seed = 1_386;
 const PNG_WIDTH = 4_096;
 const started = performance.now();
@@ -295,10 +299,40 @@ const runPipeline = async (stagePrefix: string) => {
     preview,
     png,
     pipelineFingerprint,
+    templatePolygon: territoryResult.value.templatePolygon,
   };
 };
 
 const primary = await runPipeline("primary");
+const unformattedConfiguration = {
+  ...DEFAULT_ENGINE_CONFIGURATION,
+  displayNames: {
+    ...DEFAULT_ENGINE_CONFIGURATION.displayNames,
+    removeHonorificPrefixes: false,
+  },
+};
+const unformattedLabelLayout = await timed("comparisonUnformattedLabels", async () =>
+  new LabelLayoutEngine().layout({
+    graph,
+    skeletonPlan: primary.skeletonPlan,
+    templatePolygon: primary.templatePolygon,
+    configuration: unformattedConfiguration,
+  }),
+);
+if (unformattedLabelLayout.status !== "ACCEPTED") {
+  throw new Error(
+    "Unformatted comparison labels must remain complete: " +
+      unformattedLabelLayout.metrics.unresolvedLabelCount,
+  );
+}
+const unformattedPreview = await timed("comparisonUnformattedPreview", () =>
+  new VisualPreviewExporter().export({
+    graph,
+    skeletonPlan: primary.skeletonPlan,
+    labelLayout: unformattedLabelLayout,
+    templatePolygon: primary.templatePolygon,
+  }),
+);
 const labelOverlaps = await timed("validateLabelOverlaps", async () =>
   countLabelOverlaps(primary.labelLayout),
 );
@@ -324,6 +358,45 @@ const deterministicReplayMatched =
     replay.preview.deterministicFingerprint &&
   svgSha256 === replaySvgSha256 &&
   pngSha256 === replayPngSha256;
+
+const placementWidths = (layout: LabelLayoutResult): readonly number[] =>
+  layout.placements.map((placement) =>
+    placement.bounds.maxX - placement.bounds.minX
+  );
+const average = (values: readonly number[]): number =>
+  values.length === 0
+    ? 0
+    : values.reduce((sum, value) => sum + value, 0) / values.length;
+const roundMetric = (value: number): number =>
+  Math.round(value * 1_000_000) / 1_000_000;
+const beforeWidths = placementWidths(unformattedLabelLayout);
+const afterWidths = placementWidths(primary.labelLayout);
+const averageLabelWidthBefore = average(beforeWidths);
+const averageLabelWidthAfter = average(afterWidths);
+const maximumLabelWidthBefore = Math.max(0, ...beforeWidths);
+const maximumLabelWidthAfter = Math.max(0, ...afterWidths);
+const beforeLabelSpan = unformattedPreview.metrics.labelBounds === null
+  ? 0
+  : unformattedPreview.metrics.labelBounds.maxX -
+    unformattedPreview.metrics.labelBounds.minX;
+const afterLabelSpan = primary.preview.metrics.labelBounds === null
+  ? 0
+  : primary.preview.metrics.labelBounds.maxX -
+    primary.preview.metrics.labelBounds.minX;
+const collisionRejectionsBefore =
+  unformattedLabelLayout.metrics.collisionRejectedCandidateCount;
+const collisionRejectionsAfter =
+  primary.labelLayout.metrics.collisionRejectedCandidateCount;
+const formattedNamesByPerson = new Map(
+  primary.labelLayout.placements.map((placement) => [
+    placement.personId,
+    placement.displayName,
+  ]),
+);
+const formattedLabelCount = unformattedLabelLayout.placements.filter(
+  (placement) =>
+    formattedNamesByPerson.get(placement.personId) !== placement.displayName,
+).length;
 
 const report = {
   schemaVersion: "1.0",
@@ -382,6 +455,64 @@ const report = {
   stageRuntimesMilliseconds,
 };
 
+const displayNameComparisonReport = {
+  schemaVersion: "1.0",
+  milestone: "CONFIGURABLE_DISPLAY_NAME_FORMATTER",
+  datasetMode: "GOLDEN_READ_ONLY",
+  sourceFileName: path.basename(workbookPath),
+  sourceFileSha256Before,
+  sourceFileSha256After,
+  datasetUnmodified: sourceFileSha256Before === sourceFileSha256After,
+  totalPeople: validation.statistics.acceptedPersonCount,
+  formattedLabelCount,
+  labelsPlacedBefore: unformattedLabelLayout.metrics.placedLabelCount,
+  labelsPlacedAfter: primary.labelLayout.metrics.placedLabelCount,
+  labelsUnresolvedBefore: unformattedLabelLayout.metrics.unresolvedLabelCount,
+  labelsUnresolvedAfter: primary.labelLayout.metrics.unresolvedLabelCount,
+  averageLabelWidthBefore: roundMetric(averageLabelWidthBefore),
+  averageLabelWidthAfter: roundMetric(averageLabelWidthAfter),
+  averageLabelWidthReduction: roundMetric(
+    averageLabelWidthBefore - averageLabelWidthAfter,
+  ),
+  averageLabelWidthReductionPercent: roundMetric(
+    averageLabelWidthBefore === 0
+      ? 0
+      : (averageLabelWidthBefore - averageLabelWidthAfter) /
+        averageLabelWidthBefore * 100,
+  ),
+  maximumLabelWidthBefore: roundMetric(maximumLabelWidthBefore),
+  maximumLabelWidthAfter: roundMetric(maximumLabelWidthAfter),
+  maximumLabelWidthReduction: roundMetric(
+    maximumLabelWidthBefore - maximumLabelWidthAfter,
+  ),
+  estimatedSvgWidthReduction: {
+    basis: "horizontal label-bounds span; template and skeleton geometry unchanged",
+    before: roundMetric(beforeLabelSpan),
+    after: roundMetric(afterLabelSpan),
+    absolute: roundMetric(Math.max(0, beforeLabelSpan - afterLabelSpan)),
+    percent: roundMetric(
+      beforeLabelSpan === 0
+        ? 0
+        : Math.max(0, beforeLabelSpan - afterLabelSpan) / beforeLabelSpan * 100,
+    ),
+  },
+  estimatedCollisionReduction: {
+    basis: "label-layout collision-rejected candidate count",
+    before: collisionRejectionsBefore,
+    after: collisionRejectionsAfter,
+    absolute: collisionRejectionsBefore - collisionRejectionsAfter,
+    percent: roundMetric(
+      collisionRejectionsBefore === 0
+        ? 0
+        : (collisionRejectionsBefore - collisionRejectionsAfter) /
+          collisionRejectionsBefore * 100,
+    ),
+  },
+  deterministicFingerprint: primary.pipelineFingerprint,
+  deterministicReplayFingerprint: replay.pipelineFingerprint,
+  deterministicReplayMatched,
+};
+
 if (
   !report.datasetUnmodified ||
   !report.deterministicReplayMatched ||
@@ -401,4 +532,9 @@ await fs.mkdir(outputDirectory, { recursive: true });
 await fs.writeFile(svgPath, primary.preview.svg, "utf8");
 await fs.writeFile(pngPath, primary.png);
 await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+await fs.writeFile(
+  displayNameComparisonReportPath,
+  `${JSON.stringify(displayNameComparisonReport, null, 2)}\n`,
+);
 console.log(reportPath);
+console.log(displayNameComparisonReportPath);

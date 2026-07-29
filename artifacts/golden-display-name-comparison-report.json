@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "milestone": "CONFIGURABLE_DISPLAY_NAME_FORMATTER",
+  "datasetMode": "GOLDEN_READ_ONLY",
+  "sourceFileName": "ديوان_آل_الشوكي_شجرة_الأنساب_2026 (3).xlsx",
+  "sourceFileSha256Before": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "sourceFileSha256After": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "datasetUnmodified": true,
+  "totalPeople": 1386,
+  "formattedLabelCount": 1379,
+  "labelsPlacedBefore": 1386,
+  "labelsPlacedAfter": 1386,
+  "labelsUnresolvedBefore": 0,
+  "labelsUnresolvedAfter": 0,
+  "averageLabelWidthBefore": 106.676248,
+  "averageLabelWidthAfter": 59.755155,
+  "averageLabelWidthReduction": 46.921094,
+  "averageLabelWidthReductionPercent": 43.984574,
+  "maximumLabelWidthBefore": 208,
+  "maximumLabelWidthAfter": 160,
+  "maximumLabelWidthReduction": 48,
+  "estimatedSvgWidthReduction": {
+    "basis": "horizontal label-bounds span; template and skeleton geometry unchanged",
+    "before": 6184.300401,
+    "after": 6183.632919,
+    "absolute": 0.667482,
+    "percent": 0.010793
+  },
+  "estimatedCollisionReduction": {
+    "basis": "label-layout collision-rejected candidate count",
+    "before": 30648,
+    "after": 29650,
+    "absolute": 998,
+    "percent": 3.25633
+  },
+  "deterministicFingerprint": "14b06567cb2081e9200f4373d53aa07142ad60a1f3b401f14ef348714ea9f0aa",
+  "deterministicReplayFingerprint": "14b06567cb2081e9200f4373d53aa07142ad60a1f3b401f14ef348714ea9f0aa",
+  "deterministicReplayMatched": true
+}

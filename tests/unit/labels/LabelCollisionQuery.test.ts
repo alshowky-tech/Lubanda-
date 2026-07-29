@@ -6,6 +6,7 @@ const placement = (placementId: string, minX: number, maxX: number): LabelPlacem
   placementId,
   candidateId: `candidate:${placementId}`,
   personId: placementId as PersonId,
+  displayName: `display:${placementId}`,
   anchor: { x: minX, y: 0 },
   bounds: { minX, minY: 0, maxX, maxY: 10 },
   rotationDegrees: 0,

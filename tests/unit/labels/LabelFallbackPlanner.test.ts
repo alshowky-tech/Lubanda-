@@ -77,6 +77,9 @@ describe("LabelFallbackPlanner", () => {
 
     expect(first.unresolvedPersonIds).toEqual([]);
     expect(first.placements).toHaveLength(personIds.length);
+    expect(first.placements.every((placement) =>
+      placement.displayName.length > 0
+    )).toBe(true);
     expect(replay).toEqual(first);
     for (let index = 0; index < first.placements.length; index += 1) {
       for (let other = index + 1; other < first.placements.length; other += 1) {

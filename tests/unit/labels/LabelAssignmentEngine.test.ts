@@ -11,6 +11,7 @@ const candidate = (
 ): LabelCandidate => ({
   candidateId,
   personId: personId as PersonId,
+  displayName: `display:${personId}`,
   anchor: { x: minX, y: 0 },
   bounds: { minX, minY: 0, maxX: minX + 10, maxY: 10 },
   rotationDegrees: 0,
@@ -101,6 +102,14 @@ describe("LabelAssignmentEngine", () => {
 
   it("keeps candidateId on the resulting placement", () => {
     expect(new LabelAssignmentEngine().assign({ candidates: [candidate("identity", "p1", 0)] }).placements[0]?.candidateId).toBe("identity");
+  });
+
+  it("keeps the rendering-only display name on the resulting placement", () => {
+    expect(
+      new LabelAssignmentEngine().assign({
+        candidates: [candidate("identity", "p1", 0)],
+      }).placements[0]?.displayName,
+    ).toBe("display:p1");
   });
 
   it("copies geometry into the resulting placement", () => {

@@ -22,6 +22,7 @@ const placement = (candidateId: string): LabelPlacement => ({
   placementId: "label:p1",
   candidateId,
   personId: "p1" as PersonId,
+  displayName: "محمد",
   anchor: { x: 10, y: 10 },
   bounds: { minX: 0, minY: 0, maxX: 20, maxY: 20 },
   rotationDegrees: 0,
@@ -111,5 +112,36 @@ describe("VisualPreviewExporter", () => {
     expect(first.svg).toContain(
       `visual-fingerprint:${first.deterministicFingerprint}`,
     );
+  });
+
+  it("renders the placement display name without changing genealogy", async () => {
+    const template = rectangularTemplate(8_000, 5_000);
+    if (template.kind !== "POLYGON") throw new Error("Expected polygon template");
+    const { graph, skeletonPlan } = await growSkeleton(
+      acceptedSnapshot(),
+      template,
+    );
+    const labelLayout = new LabelLayoutEngine().layout({
+      graph,
+      skeletonPlan,
+      templatePolygon: template.polygon,
+      configuration: DEFAULT_ENGINE_CONFIGURATION,
+    });
+    const originalName = graph.personsById.get("p1" as PersonId)?.name;
+    const alteredLayout = {
+      ...labelLayout,
+      placements: labelLayout.placements.map((item, index) =>
+        index === 0 ? { ...item, displayName: "اسم العرض" } : item,
+      ),
+    };
+    const result = await new VisualPreviewExporter().export({
+      graph,
+      skeletonPlan,
+      labelLayout: alteredLayout,
+      templatePolygon: template.polygon,
+    });
+
+    expect(result.svg).toContain("اسم العرض");
+    expect(graph.personsById.get("p1" as PersonId)?.name).toBe(originalName);
   });
 });

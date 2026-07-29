@@ -279,7 +279,6 @@ const renderBranch = (
 
 const renderLabel = (
   placement: LabelPlacement,
-  name: string,
   category: PreviewLabelCategory,
 ): string => {
   const className = category === "FALLBACK_LANE"
@@ -298,7 +297,8 @@ const renderLabel = (
       `height="${format(placement.bounds.maxY - placement.bounds.minY)}" rx="4"/>`,
     `<text x="${format(placement.anchor.x)}" ` +
       `y="${format(placement.anchor.y + placement.fontSize * 0.35)}" ` +
-      `font-size="${format(placement.fontSize)}"${rotation}>${escapeXml(name)}</text>`,
+      `font-size="${format(placement.fontSize)}"${rotation}>` +
+      `${escapeXml(placement.displayName)}</text>`,
     "</g>",
   ].join("");
 };
@@ -337,11 +337,7 @@ const buildSvg = (
           `Label placement references unknown person: ${placement.personId}`,
         );
       }
-      return renderLabel(
-        placement,
-        person.name,
-        classifyPreviewLabel(placement),
-      );
+      return renderLabel(placement, classifyPreviewLabel(placement));
     })
     .join("\n");
   const headerX = contentBounds.minX;
