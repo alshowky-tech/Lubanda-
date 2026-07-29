@@ -746,96 +746,313 @@ export class DeterministicSkeletonGrowthEngine
       );
     }
 
-    // ── If growth failed, return REJECTED plan ──
+    // ── Deterministic recovery for a locally trapped greedy solve ──
     if (growthFailed) {
-      const rejectionDiagnostic: SkeletonDiagnostic = Object.freeze({
-        sequence: diagnosticSequence,
-        stage: "SKELETON_VALIDATION",
-        code: "SKELETON_NO_VALID_CANDIDATE",
-        ...(growthFailurePersonId === null ? {} : { ownerPersonId: growthFailurePersonId }),
-        metrics: { totalInvalidCandidates, totalRejectedCandidates },
-        rejectionReason: "NO_VALID_CANDIDATE",
-      });
-      diagnostics.push(rejectionDiagnostic);
-
-      const allBranches = [...branches.values()];
-      const allNodes = [...nodes.values()];
-      const acceptedPersonIds = new Set(
-        allBranches.map((branch) => branch.ownerPersonId),
-      );
-      const expectedPersonCount = input.graph.getSubtree(input.selectedRootId).length;
-      const rejectionIssue = Object.freeze({
-        code: "SKELETON_NO_VALID_CANDIDATE",
-        severity: "ERROR",
-        messageKey: "skeleton.noValidCandidate",
-        stage: "GROW_SKELETON",
-        ...(growthFailurePersonId === null
-          ? {}
-          : { entityIds: [growthFailurePersonId] }),
-        details: {
-          candidateAttempts: rejectionDiagnostic.metrics.totalInvalidCandidates,
+      addDiagnostic(
+        "SKELETON_VALIDATION",
+        "LAYERED_RECOVERY_START",
+        {
+          partialBranchCount: branches.size,
+          totalInvalidCandidates,
+          totalRejectedCandidates,
         },
-        recoverable: true,
-      } as const);
-      const maximumGenealogyDepth = Math.max(
-        ...allBranches.map((branch) => branch.genealogyDepth),
-        0,
+        undefined,
+        growthFailurePersonId ?? undefined,
+        "NO_VALID_CANDIDATE",
       );
-      const rejectedFingerprint = await sha256Canonical({
-        status: "REJECTED",
-        selectedRootId: input.selectedRootId,
-        sourceChecksum: input.sourceChecksum,
-        seed: input.seed,
-        failurePersonId: growthFailurePersonId,
-        diagnosticCount: diagnostics.length,
-      });
 
-      return Object.freeze({
-        schemaVersion: "1.0",
-        engineVersion: "0.2.0",
-        skeletonPlanId: asSkeletonPlanId(`rejected:${rejectedFingerprint.slice(0, 24)}`),
-        status: "REJECTED",
-        selectedRootId: input.selectedRootId,
-        sourceChecksum: input.sourceChecksum,
-        seed: input.seed,
-        territoryPlanFingerprint: territoryPlan.deterministicFingerprint,
-        trunk,
-        branches: Object.freeze(allBranches),
-        nodes: Object.freeze(allNodes),
-        mappedJunctions: Object.freeze(mappedJunctions),
-        diagnostics: Object.freeze(diagnostics),
-        validation: Object.freeze({
-          accepted: false,
-          issues: Object.freeze([rejectionIssue]),
-          metrics: {
-            branchCount: allBranches.length,
-            nodeCount: allNodes.length,
-            trunkSegmentCount: trunk.segments.length,
-            junctionCount: mappedJunctions.length,
-            invalidBranchCount: 0,
-            missingPersonBranchCount:
-              expectedPersonCount - acceptedPersonIds.size,
-            orphanBranchCount: 0,
-            territoryMissCount: 0,
-            outOfBoundsCount: 0,
-            intersectionCount: 0,
-            totalCurveLength: roundDeterministic(allBranches.reduce((s, b) => s + b.length, 0), decimalPlaces),
-            maxDepth: maximumGenealogyDepth,
-            acceptedPersonCount: acceptedPersonIds.size,
-            connectedPersonCount: allBranches.filter((b) => b.parentBranchId !== null || b.generation === 0).length,
-          },
-        }),
-        configurationUsed: Object.freeze({ ...input.configuration }),
-        metadata: Object.freeze({
-          algorithm: "RECURSIVE_ORGANIC_GROWTH",
-          branchCount: allBranches.length,
-          nodeCount: allNodes.length,
-          maximumGenealogyDepth,
-          maximumSkeletonDepth: maximumGenealogyDepth,
-          totalInvalidCandidateCount: totalInvalidCandidates,
-          totalRejectedCandidateCount: totalRejectedCandidates,
-        }),
-        deterministicFingerprint: rejectedFingerprint,
+      const trunkBranchIds = new Set<SkeletonBranchId>(trunk.segments);
+      const recoveredBranches = new Map<SkeletonBranchId, SkeletonBranch>();
+      for (const branchId of trunk.segments) {
+        const branch = branches.get(branchId);
+        if (branch) recoveredBranches.set(branchId, branch);
+      }
+      const recoveredNodes = new Map<string, SkeletonNode>();
+      for (const node of nodes.values()) {
+        if (!node.kind.startsWith("TRUNK")) continue;
+        recoveredNodes.set(node.id, {
+          ...node,
+          incomingBranchId:
+            node.incomingBranchId !== null &&
+            trunkBranchIds.has(node.incomingBranchId)
+              ? node.incomingBranchId
+              : null,
+          outgoingBranchIds: Object.freeze(
+            node.outgoingBranchIds.filter((id) => trunkBranchIds.has(id)),
+          ),
+        });
+      }
+
+      const depthByPerson = new Map<PersonId, number>([
+        [input.selectedRootId, 0],
+      ]);
+      const lineageRootByPerson = new Map<PersonId, PersonId>();
+      const majorLineageIds =
+        input.graph.childrenByParentId.get(input.selectedRootId) ?? [];
+      for (const lineageRootId of majorLineageIds) {
+        const stack: Array<{ readonly id: PersonId; readonly depth: number }> = [
+          { id: lineageRootId, depth: 1 },
+        ];
+        while (stack.length > 0) {
+          const current = stack.pop() as {
+            readonly id: PersonId;
+            readonly depth: number;
+          };
+          depthByPerson.set(current.id, current.depth);
+          lineageRootByPerson.set(current.id, lineageRootId);
+          const children = input.graph.childrenByParentId.get(current.id) ?? [];
+          for (let index = children.length - 1; index >= 0; index -= 1) {
+            stack.push({
+              id: children[index] as PersonId,
+              depth: current.depth + 1,
+            });
+          }
+        }
+      }
+
+      const positionByPerson = new Map<PersonId, Vec2>();
+      const orderedLineages = [...majorLineageIds]
+        .filter((id) => territoryByOwner.has(id))
+        .sort((left, right) => {
+          const leftX = territoryByOwner.get(left)?.centroid.x ?? 0;
+          const rightX = territoryByOwner.get(right)?.centroid.x ?? 0;
+          return leftX - rightX || left.localeCompare(right);
+        });
+      const lineageBandById = new Map<
+        PersonId,
+        Readonly<{ readonly left: number; readonly right: number }>
+      >();
+      for (let index = 0; index < orderedLineages.length; index += 1) {
+        const currentId = orderedLineages[index] as PersonId;
+        const currentX =
+          territoryByOwner.get(currentId)?.centroid.x ??
+          (bounds.minX + bounds.maxX) / 2;
+        const previousId = orderedLineages[index - 1];
+        const nextId = orderedLineages[index + 1];
+        const previousBoundary =
+          previousId === undefined
+            ? bounds.minX + 32
+            : ((territoryByOwner.get(previousId)?.centroid.x ?? currentX) +
+                currentX) /
+                2 +
+              16;
+        const nextBoundary =
+          nextId === undefined
+            ? bounds.maxX - 32
+            : (currentX +
+                (territoryByOwner.get(nextId)?.centroid.x ?? currentX)) /
+                2 -
+              16;
+        lineageBandById.set(currentId, {
+          left: previousBoundary,
+          right: nextBoundary,
+        });
+      }
+      for (const lineageRootId of majorLineageIds) {
+        const territory = territoryByOwner.get(lineageRootId);
+        if (!territory) continue;
+        const subtree = input.graph.getSubtree(lineageRootId);
+        const terminalIds = subtree.filter((id) => input.graph.isTerminal(id));
+        const lineageBand = lineageBandById.get(lineageRootId);
+        const left = lineageBand?.left ?? territory.centroid.x;
+        const right = lineageBand?.right ?? territory.centroid.x;
+        const terminalX = new Map<PersonId, number>();
+        terminalIds.forEach((id, index) => {
+          const ratio =
+            terminalIds.length <= 1 ? 0.5 : index / (terminalIds.length - 1);
+          terminalX.set(
+            id,
+            right > left
+              ? left + (right - left) * ratio
+              : territory.centroid.x,
+          );
+        });
+        const xByPerson = new Map<PersonId, number>();
+        const resolveX = (personId: PersonId): number => {
+          const cached = xByPerson.get(personId);
+          if (cached !== undefined) return cached;
+          const children =
+            input.graph.childrenByParentId.get(personId) ?? [];
+          if (children.length === 0) {
+            const value = terminalX.get(personId) ?? territory.centroid.x;
+            xByPerson.set(personId, value);
+            return value;
+          }
+          const childX = children.map(resolveX);
+          const value =
+            (Math.min(...childX) + Math.max(...childX)) / 2;
+          xByPerson.set(personId, value);
+          return value;
+        };
+        resolveX(lineageRootId);
+
+        const maximumDepth = Math.max(
+          ...subtree.map((id) => depthByPerson.get(id) ?? 1),
+          1,
+        );
+        const lineageStartY = territory.centroid.y;
+        const bottomY = bounds.maxY - 48;
+        const availableDepth = Math.max(1, maximumDepth - 1);
+        for (const personId of subtree) {
+          const depth = depthByPerson.get(personId) ?? 1;
+          const relativeDepth = depth - 1;
+          positionByPerson.set(
+            personId,
+            depth === 1
+              ? { ...territory.centroid }
+              : {
+                  x: resolveX(personId),
+                  y:
+                    lineageStartY +
+                    (bottomY - lineageStartY) *
+                      (relativeDepth / availableDepth),
+                },
+          );
+        }
+      }
+
+      const branchIdByPerson = new Map<PersonId, SkeletonBranchId>();
+      const nodeIdByPerson = new Map<PersonId, string>();
+      const demandByPerson = new Map(
+        input.demandPlan.results.map((entry) => [
+          entry.personId,
+          entry,
+        ] as const),
+      );
+
+      for (const lineageRootId of majorLineageIds) {
+        const mappedJunction = mappedJunctions.find(
+          (entry) => entry.lineageRootId === lineageRootId,
+        );
+        if (!mappedJunction) continue;
+        const stack: PersonId[] = [lineageRootId];
+        while (stack.length > 0) {
+          const personId = stack.pop() as PersonId;
+          const person = input.graph.personsById.get(personId);
+          const endPoint = positionByPerson.get(personId);
+          if (!person || !endPoint) continue;
+          const parentId = person.parentId;
+          const parentBranchId =
+            parentId === input.selectedRootId
+              ? null
+              : branchIdByPerson.get(parentId as PersonId) ?? null;
+          const startNodeId =
+            parentId === input.selectedRootId
+              ? mappedJunction.trunkNodeId
+              : nodeIdByPerson.get(parentId as PersonId);
+          if (!startNodeId) continue;
+          const startNode = recoveredNodes.get(startNodeId);
+          if (!startNode) continue;
+          const startPoint = startNode.point;
+          const branchIndex = recoveredBranches.size;
+          const branchId = asSkeletonBranchId(
+            `layered:${personId}:${branchIndex}`,
+          );
+          const endNodeId = nextNodeId("layered-node");
+          const children =
+            input.graph.childrenByParentId.get(personId) ?? [];
+          const lineageRoot =
+            lineageRootByPerson.get(personId) ?? lineageRootId;
+          const depth = depthByPerson.get(personId) ?? 1;
+          const subtreeSize =
+            (demandByPerson.get(personId)?.raw.descendantCount ?? 0) + 1;
+          const endNode: SkeletonNode = {
+            id: endNodeId,
+            point: endPoint,
+            kind:
+              children.length === 0 ? "BRANCH_TERMINAL" : "BRANCH_SPLIT",
+            incomingBranchId: branchId,
+            outgoingBranchIds: Object.freeze([]),
+            ownerLineageRootId: lineageRoot,
+          };
+          recoveredNodes.set(endNodeId, endNode);
+          const curve: CubicBezier = {
+            p0: { ...startPoint },
+            p1: lerp(startPoint, endPoint, 1 / 3),
+            p2: lerp(startPoint, endPoint, 2 / 3),
+            p3: { ...endPoint },
+          };
+          const majorTerritory =
+            parentId === input.selectedRootId
+              ? territoryByOwner.get(personId)
+              : undefined;
+          const branch: SkeletonBranch = {
+            id: branchId,
+            ownerPersonId: personId,
+            parentBranchId,
+            generation: depth,
+            genealogyDepth: depth,
+            territoryId: majorTerritory?.id ?? null,
+            curve,
+            startPoint: { ...startPoint },
+            endPoint: { ...endPoint },
+            length: roundDeterministic(
+              distance(startPoint, endPoint),
+              decimalPlaces,
+            ),
+            thickness: computeBranchThickness(
+              subtreeSize,
+              input.graph.getSubtree(input.selectedRootId).length,
+              null,
+              false,
+              depth,
+            ),
+            startNodeId,
+            endNodeId,
+            childrenBranchIds: Object.freeze([]),
+            candidateScore: null,
+            rejectionHistory: Object.freeze([]),
+            metadata: Object.freeze({
+              branchIndex,
+              lineageRootId: lineageRoot,
+              person,
+            }),
+          };
+          recoveredBranches.set(branchId, branch);
+          branchIdByPerson.set(personId, branchId);
+          nodeIdByPerson.set(personId, endNodeId);
+          recoveredNodes.set(startNodeId, {
+            ...startNode,
+            outgoingBranchIds: Object.freeze([
+              ...startNode.outgoingBranchIds,
+              branchId,
+            ]),
+          });
+          if (parentBranchId !== null) {
+            const parentBranch = recoveredBranches.get(parentBranchId);
+            if (parentBranch) {
+              recoveredBranches.set(parentBranchId, {
+                ...parentBranch,
+                childrenBranchIds: Object.freeze([
+                  ...parentBranch.childrenBranchIds,
+                  branchId,
+                ]),
+              });
+            }
+          }
+          for (let index = children.length - 1; index >= 0; index -= 1) {
+            stack.push(children[index] as PersonId);
+          }
+        }
+      }
+
+      branches.clear();
+      for (const [id, branch] of recoveredBranches) branches.set(id, branch);
+      nodes.clear();
+      for (const [id, node] of recoveredNodes) nodes.set(id, node);
+      allBranchGeometry.length = 0;
+      for (const branch of recoveredBranches.values()) {
+        allBranchGeometry.push({ id: branch.id, curve: branch.curve });
+      }
+      growthFailed = false;
+      addDiagnostic("SKELETON_VALIDATION", "LAYERED_RECOVERY_COMPLETE", {
+        recoveredBranchCount: recoveredBranches.size,
+        recoveredNodeCount: recoveredNodes.size,
+        coveredPersonCount: new Set(
+          [...recoveredBranches.values()].map(
+            (branch) => branch.ownerPersonId,
+          ),
+        ).size,
       });
     }
 

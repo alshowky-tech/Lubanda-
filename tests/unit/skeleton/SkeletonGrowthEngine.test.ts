@@ -143,24 +143,26 @@ describe("DeterministicSkeletonGrowthEngine", () => {
     }
   });
 
-  it("forced no-valid-candidate scenario returns REJECTED with no fallback branch", async () => {
+  it("recovers deterministically when every local candidate is rejected", async () => {
     // Use growSkeleton with valid territory, but extreme skeleton constraints
-    // that will reject all candidates
-    const { skeletonPlan: sk } = await growSkeleton(
+    // that reject every local candidate and force layered recovery.
+    const { skeletonPlan: sk, graph } = await growSkeleton(
       acceptedSnapshot(),
       undefined,  // default template
       42,
       { ...DEFAULT_ENGINE_CONFIGURATION.skeleton, candidateCount: 2, minimumBranchLength: 5000 },
     );
-    expect(sk.status).toBe("REJECTED");
-    // No fallback branch should exist: no branch with candidateScore === null
-    // and generation > 0 should have been created
-    for (const b of sk.branches) {
-      if (b.generation > 0 && b.candidateScore === null) {
-        // score null means fallback — should not happen
-        expect(false).toBe(true);
-      }
-    }
+    expect(sk.status).toBe("ACCEPTED");
+    expect(sk.validation.metrics.intersectionCount).toBe(0);
+    expect(sk.diagnostics.some(
+      (diagnostic) => diagnostic.code === "LAYERED_RECOVERY_START",
+    )).toBe(true);
+    expect(sk.diagnostics.some(
+      (diagnostic) => diagnostic.code === "LAYERED_RECOVERY_COMPLETE",
+    )).toBe(true);
+    const expectedPeople = graph.getSubtree(asPersonId(sk.selectedRootId));
+    const coveredPeople = new Set(sk.branches.map((branch) => branch.ownerPersonId));
+    expect(expectedPeople.every((personId) => coveredPeople.has(personId))).toBe(true);
   });
 
   it("deliberately corrupted connectivity is rejected by the validator", async () => {
