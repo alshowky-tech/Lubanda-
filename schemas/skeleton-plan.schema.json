@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/skeleton-plan.schema.json",
+  "title": "Lubanda Milestone 3 Skeleton Plan",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "engineVersion",
+    "skeletonPlanId",
+    "status",
+    "selectedRootId",
+    "sourceChecksum",
+    "seed",
+    "territoryPlanFingerprint",
+    "trunk",
+    "branches",
+    "nodes",
+    "mappedJunctions",
+    "diagnostics",
+    "validation",
+    "configurationUsed",
+    "metadata",
+    "deterministicFingerprint"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "engineVersion": { "const": "0.2.0" },
+    "skeletonPlanId": { "type": "string", "minLength": 1 },
+    "status": { "const": "ACCEPTED" },
+    "selectedRootId": { "type": "string", "minLength": 1 },
+    "sourceChecksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "seed": { "type": "integer" },
+    "territoryPlanFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "trunk": { "$ref": "#/$defs/trunk" },
+    "branches": { "type": "array", "items": { "$ref": "#/$defs/branch" } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "mappedJunctions": { "type": "array", "items": { "$ref": "#/$defs/mappedJunction" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/skeletonDiagnostic" } },
+    "validation": { "$ref": "#/$defs/skeletonValidation" },
+    "configurationUsed": { "$ref": "#/$defs/skeletonConfig" },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "deterministicFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "vec2": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } },
+      "additionalProperties": false
+    },
+    "cubicBezier": {
+      "type": "object",
+      "required": ["p0", "p1", "p2", "p3"],
+      "properties": {
+        "p0": { "$ref": "#/$defs/vec2" },
+        "p1": { "$ref": "#/$defs/vec2" },
+        "p2": { "$ref": "#/$defs/vec2" },
+        "p3": { "$ref": "#/$defs/vec2" }
+      },
+      "additionalProperties": false
+    },
+    "thickness": {
+      "type": "object",
+      "required": ["baseThickness", "tipThickness", "taperRatio"],
+      "properties": {
+        "baseThickness": { "type": "number", "minimum": 0 },
+        "tipThickness": { "type": "number", "minimum": 0 },
+        "taperRatio": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "rejectionRecord": {
+      "type": "object",
+      "required": ["candidateIndex", "reason"],
+      "properties": {
+        "candidateIndex": { "type": "integer", "minimum": 0 },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "OUT_OF_BOUNDS",
+            "EXCESSIVE_CURVATURE",
+            "TOO_SHORT",
+            "BRANCH_INTERSECTION",
+            "TERRITORY_BOUNDARY_CROSSED",
+            "CANDIDATE_DEGENERATE",
+            "NO_VALID_CANDIDATE",
+            "JUNCTION_OUT_OF_BOUNDS"
+          ]
+        },
+        "details": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "branchMetadata": {
+      "type": "object",
+      "required": ["branchIndex", "lineageRootId"],
+      "properties": {
+        "branchIndex": { "type": "integer", "minimum": 0 },
+        "lineageRootId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "branch": {
+      "type": "object",
+      "required": [
+        "id", "ownerPersonId", "parentBranchId", "generation", "genealogyDepth",
+        "territoryId", "curve", "startPoint", "endPoint", "length",
+        "thickness", "startNodeId", "endNodeId", "childrenBranchIds",
+        "candidateScore", "rejectionHistory", "metadata"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "ownerPersonId": { "type": "string", "minLength": 1 },
+        "parentBranchId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "generation": { "type": "integer", "minimum": 0 },
+        "genealogyDepth": { "type": "integer", "minimum": 0 },
+        "territoryId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "curve": { "$ref": "#/$defs/cubicBezier" },
+        "startPoint": { "$ref": "#/$defs/vec2" },
+        "endPoint": { "$ref": "#/$defs/vec2" },
+        "length": { "type": "number", "minimum": 0 },
+        "thickness": { "$ref": "#/$defs/thickness" },
+        "startNodeId": { "type": "string" },
+        "endNodeId": { "type": "string" },
+        "childrenBranchIds": { "type": "array", "items": { "type": "string" } },
+        "candidateScore": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+        "rejectionHistory": { "type": "array", "items": { "$ref": "#/$defs/rejectionRecord" } },
+        "metadata": { "$ref": "#/$defs/branchMetadata" }
+      },
+      "additionalProperties": false
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "point", "kind", "incomingBranchId", "outgoingBranchIds", "ownerLineageRootId"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "point": { "$ref": "#/$defs/vec2" },
+        "kind": {
+          "type": "string",
+          "enum": ["TRUNK_BASE", "TRUNK_JUNCTION", "BRANCH_SPLIT", "BRANCH_TERMINAL", "TRUNK_TERMINAL"]
+        },
+        "incomingBranchId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "outgoingBranchIds": { "type": "array", "items": { "type": "string" } },
+        "ownerLineageRootId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "trunk": {
+      "type": "object",
+      "required": ["baseNodeId", "terminalNodeId", "segments", "length", "centroid"],
+      "properties": {
+        "baseNodeId": { "type": "string", "minLength": 1 },
+        "terminalNodeId": { "type": "string", "minLength": 1 },
+        "segments": { "type": "array", "items": { "type": "string" } },
+        "length": { "type": "number", "minimum": 0 },
+        "centroid": { "$ref": "#/$defs/vec2" }
+      },
+      "additionalProperties": false
+    },
+    "mappedJunction": {
+      "type": "object",
+      "required": ["junctionZoneId", "trunkNodeId", "lineageRootId", "trunkPoint", "corridorId"],
+      "properties": {
+        "junctionZoneId": { "type": "string", "minLength": 1 },
+        "trunkNodeId": { "type": "string", "minLength": 1 },
+        "lineageRootId": { "type": "string", "minLength": 1 },
+        "trunkPoint": { "$ref": "#/$defs/vec2" },
+        "corridorId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "skeletonDiagnostic": {
+      "type": "object",
+      "required": ["sequence", "stage", "code", "metrics"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 0 },
+        "stage": {
+          "type": "string",
+          "enum": ["TRUNK_PLANNING", "JUNCTION_PLANNING", "CANDIDATE_GENERATION", "CANDIDATE_SCORING", "RECURSIVE_GROWTH", "SKELETON_VALIDATION"]
+        },
+        "code": { "type": "string", "minLength": 1 },
+        "branchId": { "type": "string" },
+        "ownerPersonId": { "type": "string" },
+        "metrics": { "type": "object", "additionalProperties": { "type": "number" } },
+        "rejectionReason": {
+          "type": "string",
+          "enum": ["OUT_OF_BOUNDS", "EXCESSIVE_CURVATURE", "TOO_SHORT", "BRANCH_INTERSECTION", "TERRITORY_BOUNDARY_CROSSED", "CANDIDATE_DEGENERATE", "NO_VALID_CANDIDATE", "JUNCTION_OUT_OF_BOUNDS"]
+        },
+        "candidateAttempts": { "type": "integer", "minimum": 0 },
+        "acceptedCandidateIndex": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "skeletonConfig": {
+      "type": "object",
+      "required": ["candidateCount", "maxCurvature", "minimumBranchLength"],
+      "properties": {
+        "candidateCount": { "type": "integer", "minimum": 1 },
+        "maxCurvature": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumBranchLength": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "algorithm", "branchCount", "nodeCount",
+        "maximumGenealogyDepth", "maximumSkeletonDepth",
+        "totalInvalidCandidateCount", "totalRejectedCandidateCount"
+      ],
+      "properties": {
+        "algorithm": { "const": "RECURSIVE_ORGANIC_GROWTH" },
+        "branchCount": { "type": "integer", "minimum": 0 },
+        "nodeCount": { "type": "integer", "minimum": 0 },
+        "maximumGenealogyDepth": { "type": "integer", "minimum": 0 },
+        "maximumSkeletonDepth": { "type": "integer", "minimum": 0 },
+        "totalInvalidCandidateCount": { "type": "integer", "minimum": 0 },
+        "totalRejectedCandidateCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "skeletonValidation": {
+      "type": "object",
+      "required": ["accepted", "issues", "metrics"],
+      "properties": {
+        "accepted": { "type": "boolean" },
+        "issues": { "type": "array" },
+        "metrics": {
+          "type": "object",
+          "required": [
+            "branchCount", "nodeCount", "trunkSegmentCount", "junctionCount",
+            "invalidBranchCount", "missingPersonBranchCount", "orphanBranchCount",
+            "territoryMissCount", "outOfBoundsCount", "intersectionCount",
+            "totalCurveLength", "maxDepth", "acceptedPersonCount", "connectedPersonCount"
+          ],
+          "properties": {
+            "branchCount": { "type": "integer", "minimum": 0 },
+            "nodeCount": { "type": "integer", "minimum": 0 },
+            "trunkSegmentCount": { "type": "integer", "minimum": 0 },
+            "junctionCount": { "type": "integer", "minimum": 0 },
+            "invalidBranchCount": { "type": "integer", "minimum": 0 },
+            "missingPersonBranchCount": { "type": "integer", "minimum": 0 },
+            "orphanBranchCount": { "type": "integer", "minimum": 0 },
+            "territoryMissCount": { "type": "integer", "minimum": 0 },
+            "outOfBoundsCount": { "type": "integer", "minimum": 0 },
+            "intersectionCount": { "type": "integer", "minimum": 0 },
+            "totalCurveLength": { "type": "number", "minimum": 0 },
+            "maxDepth": { "type": "integer", "minimum": 0 },
+            "acceptedPersonCount": { "type": "integer", "minimum": 0 },
+            "connectedPersonCount": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

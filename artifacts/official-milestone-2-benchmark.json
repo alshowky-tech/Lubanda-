@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "benchmark": "OFFICIAL_1386_PERSON_WORKBOOK",
+  "selectedRoot": "1",
+  "includedPeople": 1386,
+  "majorLineageCount": 2,
+  "totalDemand": 7445665.345678,
+  "perLineageDemand": [
+    {
+      "lineageId": "2",
+      "descendantCount": 819,
+      "requiredArea": 4416879.935354
+    },
+    {
+      "lineageId": "487",
+      "descendantCount": 564,
+      "requiredArea": 3028485.917578
+    }
+  ],
+  "territoryAreas": [
+    {
+      "territoryId": "territory:2",
+      "ownerLineageRootId": "2",
+      "requiredArea": 4416879.935354,
+      "allocatedArea": 13625566.0281
+    },
+    {
+      "territoryId": "territory:487",
+      "ownerLineageRootId": "487",
+      "requiredArea": 3028485.917578,
+      "allocatedArea": 10034913.838092
+    }
+  ],
+  "negotiationIterations": 0,
+  "negotiationStatus": "NOT_REQUIRED",
+  "validationOutcome": "ACCEPTED",
+  "validationMetrics": {
+    "includedMajorLineageCount": 2,
+    "territoryCount": 2,
+    "corridorCount": 2,
+    "invalidPolygonCount": 0,
+    "overlapCount": 0,
+    "missingOwnershipCount": 0,
+    "invalidCorridorCount": 0,
+    "minimumAreaDeficitCount": 0,
+    "totalAllocatedArea": 23660479.866191998,
+    "templateArea": 24787093.416
+  },
+  "runtimeMilliseconds": 344.396,
+  "peakMemory": {
+    "measurable": true,
+    "method": "process.rss high-water approximation over benchmark boundaries",
+    "initialRssBytes": 112144384,
+    "finalRssBytes": 154914816,
+    "peakRssBytes": 154914816
+  },
+  "sourceChecksum": "30fb1f4d977ae882b631b727afe50ef2de6ae4c9c8092bd4d7203670cdd35da9",
+  "demandFingerprint": "3cf7db92825a1cc9cd8e74d8bb6591d5f91a1a3d3c7c834710d08f080a9e2813",
+  "territoryFingerprint": "853597bf12e4a876e50e28169b0be4b595ff311d40580657cec6234e8eedce87",
+  "deterministicReplayChecksum": "ead61913298aa8e41cde2cb2fe30db6e9056076106a8c6f1cbc8d67f02a34b02",
+  "canonicalSerializedBytes": 6101,
+  "replayByteIdentical": true,
+  "templateBoundary": {
+    "kind": "POLYGON",
+    "polygon": {
+      "points": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 6196.773353931867,
+          "y": 0
+        },
+        {
+          "x": 6196.773353931867,
+          "y": 4000
+        },
+        {
+          "x": 0,
+          "y": 4000
+        }
+      ]
+    }
+  }
+}

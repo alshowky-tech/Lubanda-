@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/demand-plan.schema.json",
+  "title": "Lubanda Milestone 2 Demand Plan",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "engineVersion",
+    "demandPlanId",
+    "selectedRootId",
+    "sourceChecksum",
+    "configurationUsed",
+    "results",
+    "totalRequiredArea",
+    "computationMetadata"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "engineVersion": { "const": "0.2.0" },
+    "demandPlanId": { "type": "string", "minLength": 1 },
+    "selectedRootId": { "type": "string", "minLength": 1 },
+    "sourceChecksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "configurationUsed": { "$ref": "#/$defs/demandConfiguration" },
+    "results": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/personDemand" }
+    },
+    "totalRequiredArea": { "type": "number", "minimum": 0 },
+    "computationMetadata": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "personCount",
+        "maximumStackSize",
+        "roundingDecimalPlaces",
+        "deterministicFingerprint"
+      ],
+      "properties": {
+        "algorithm": { "const": "ITERATIVE_BOTTOM_UP" },
+        "personCount": { "type": "integer", "minimum": 1 },
+        "maximumStackSize": { "type": "integer", "minimum": 1 },
+        "roundingDecimalPlaces": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "deterministicFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "demandConfiguration": {
+      "type": "object",
+      "required": [
+        "subtreeSizeWeight",
+        "directChildCountWeight",
+        "terminalCountWeight",
+        "maxDepthWeight",
+        "branchEntropyWeight",
+        "labelWeight",
+        "routingClearanceWeight",
+        "estimatedCharacterWidth",
+        "estimatedLabelHeight",
+        "personPadding",
+        "safetyMargin",
+        "woodClearance",
+        "minimumArea",
+        "maximumArea",
+        "minimumDemand",
+        "maximumDemand",
+        "lineageWeights",
+        "roundingDecimalPlaces"
+      ],
+      "properties": {
+        "subtreeSizeWeight": { "type": "number", "minimum": 0 },
+        "directChildCountWeight": { "type": "number", "minimum": 0 },
+        "terminalCountWeight": { "type": "number", "minimum": 0 },
+        "maxDepthWeight": { "type": "number", "minimum": 0 },
+        "branchEntropyWeight": { "type": "number", "minimum": 0 },
+        "labelWeight": { "type": "number", "minimum": 0 },
+        "routingClearanceWeight": { "type": "number", "minimum": 0 },
+        "estimatedCharacterWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "estimatedLabelHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "personPadding": { "type": "number", "minimum": 0 },
+        "safetyMargin": { "type": "number", "minimum": 0 },
+        "woodClearance": { "type": "number", "minimum": 0 },
+        "minimumArea": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumArea": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumDemand": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumDemand": { "type": "number", "exclusiveMinimum": 0 },
+        "lineageWeights": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "roundingDecimalPlaces": { "type": "integer", "minimum": 0, "maximum": 12 }
+      },
+      "additionalProperties": false
+    },
+    "personDemand": {
+      "type": "object",
+      "required": ["personId", "raw", "spatial", "metadata"],
+      "properties": {
+        "personId": { "type": "string", "minLength": 1 },
+        "raw": {
+          "type": "object",
+          "required": [
+            "descendantCount",
+            "directChildCount",
+            "subtreeDepth",
+            "terminalPersonCount",
+            "ownLabelFootprint",
+            "subtreeLabelFootprint",
+            "branchingEntropy",
+            "branchingComplexity"
+          ],
+          "properties": {
+            "descendantCount": { "type": "integer", "minimum": 0 },
+            "directChildCount": { "type": "integer", "minimum": 0 },
+            "subtreeDepth": { "type": "integer", "minimum": 0 },
+            "terminalPersonCount": { "type": "integer", "minimum": 1 },
+            "ownLabelFootprint": { "type": "number", "minimum": 0 },
+            "subtreeLabelFootprint": { "type": "number", "minimum": 0 },
+            "branchingEntropy": { "type": "number", "minimum": 0, "maximum": 1 },
+            "branchingComplexity": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "spatial": {
+          "type": "object",
+          "required": [
+            "demandScore",
+            "labelArea",
+            "woodAndRoutingArea",
+            "paddingAndSafetyArea",
+            "minimumArea",
+            "requiredArea",
+            "appliedLineageWeight"
+          ],
+          "properties": {
+            "demandScore": { "type": "number", "minimum": 0 },
+            "labelArea": { "type": "number", "minimum": 0 },
+            "woodAndRoutingArea": { "type": "number", "minimum": 0 },
+            "paddingAndSafetyArea": { "type": "number", "minimum": 0 },
+            "minimumArea": { "type": "number", "exclusiveMinimum": 0 },
+            "requiredArea": { "type": "number", "exclusiveMinimum": 0 },
+            "appliedLineageWeight": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "metadata": {
+          "type": "object",
+          "required": ["postorderIndex", "canonicalScopeIndex", "algorithmVersion"],
+          "properties": {
+            "postorderIndex": { "type": "integer", "minimum": 0 },
+            "canonicalScopeIndex": { "type": "integer", "minimum": 0 },
+            "algorithmVersion": { "const": "1.0" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

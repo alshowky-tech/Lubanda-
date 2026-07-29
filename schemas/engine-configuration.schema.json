@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/engine-configuration.schema.json",
+  "title": "Lubanda Engine Configuration",
+  "type": "object",
+  "required": [
+    "version",
+    "geometry",
+    "demand",
+    "territory",
+    "skeleton",
+    "collision",
+    "labels",
+    "stability",
+    "performance"
+  ],
+  "properties": {
+    "version": { "const": "1.0" },
+    "geometry": {
+      "type": "object",
+      "required": ["epsilon", "bezierSubdivisionTolerance", "maxSubdivisionDepth"],
+      "properties": {
+        "epsilon": { "type": "number", "exclusiveMinimum": 0 },
+        "bezierSubdivisionTolerance": { "type": "number", "exclusiveMinimum": 0 },
+        "maxSubdivisionDepth": { "type": "integer", "minimum": 1, "maximum": 32 }
+      },
+      "additionalProperties": false
+    },
+    "demand": {
+      "type": "object",
+      "required": [
+        "subtreeSizeWeight",
+        "directChildCountWeight",
+        "terminalCountWeight",
+        "maxDepthWeight",
+        "branchEntropyWeight",
+        "labelWeight",
+        "routingClearanceWeight",
+        "estimatedCharacterWidth",
+        "estimatedLabelHeight",
+        "personPadding",
+        "safetyMargin",
+        "woodClearance",
+        "minimumArea",
+        "maximumArea",
+        "minimumDemand",
+        "maximumDemand",
+        "lineageWeights",
+        "roundingDecimalPlaces"
+      ],
+      "properties": {
+        "subtreeSizeWeight": { "type": "number", "minimum": 0 },
+        "directChildCountWeight": { "type": "number", "minimum": 0 },
+        "terminalCountWeight": { "type": "number", "minimum": 0 },
+        "maxDepthWeight": { "type": "number", "minimum": 0 },
+        "branchEntropyWeight": { "type": "number", "minimum": 0 },
+        "labelWeight": { "type": "number", "minimum": 0 },
+        "routingClearanceWeight": { "type": "number", "minimum": 0 },
+        "estimatedCharacterWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "estimatedLabelHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "personPadding": { "type": "number", "minimum": 0 },
+        "safetyMargin": { "type": "number", "minimum": 0 },
+        "woodClearance": { "type": "number", "minimum": 0 },
+        "minimumArea": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumArea": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumDemand": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumDemand": { "type": "number", "exclusiveMinimum": 0 },
+        "lineageWeights": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "roundingDecimalPlaces": { "type": "integer", "minimum": 0, "maximum": 12 }
+      },
+      "additionalProperties": false
+    },
+    "territory": {
+      "type": "object",
+      "required": [
+        "maxNegotiationIterations",
+        "minimumCorridorWidth",
+        "minimumCorridorLength",
+        "corridorClearance",
+        "minimumTerritoryArea",
+        "boundaryMargin",
+        "junctionZoneRadius",
+        "rootEntryWidth",
+        "rootEntryDepth",
+        "maximumAreaErrorRatio",
+        "convergenceTolerance",
+        "seedJitter",
+        "boundarySamplingPoints",
+        "maximumFragmentCount",
+        "roundingDecimalPlaces"
+      ],
+      "properties": {
+        "maxNegotiationIterations": { "type": "integer", "minimum": 1 },
+        "minimumCorridorWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumCorridorLength": { "type": "number", "exclusiveMinimum": 0 },
+        "corridorClearance": { "type": "number", "minimum": 0 },
+        "minimumTerritoryArea": { "type": "number", "exclusiveMinimum": 0 },
+        "boundaryMargin": { "type": "number", "minimum": 0 },
+        "junctionZoneRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "rootEntryWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "rootEntryDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumAreaErrorRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "convergenceTolerance": { "type": "number", "exclusiveMinimum": 0 },
+        "seedJitter": { "type": "number", "minimum": 0, "maximum": 0.49 },
+        "boundarySamplingPoints": { "type": "integer", "minimum": 12, "maximum": 512 },
+        "maximumFragmentCount": { "const": 1 },
+        "roundingDecimalPlaces": { "type": "integer", "minimum": 0, "maximum": 12 }
+      },
+      "additionalProperties": false
+    },
+    "skeleton": {
+      "type": "object",
+      "required": ["candidateCount", "maxCurvature", "minimumBranchLength"],
+      "properties": {
+        "candidateCount": { "type": "integer", "minimum": 1 },
+        "maxCurvature": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumBranchLength": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "collision": {
+      "type": "object",
+      "required": ["branchClearance", "labelClearance", "barkAllowance"],
+      "properties": {
+        "branchClearance": { "type": "number", "minimum": 0 },
+        "labelClearance": { "type": "number", "minimum": 0 },
+        "barkAllowance": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "labels": {
+      "type": "object",
+      "required": ["minimumFontSize", "maximumRotationDegrees"],
+      "properties": {
+        "minimumFontSize": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumRotationDegrees": { "type": "number", "minimum": 0, "maximum": 180 }
+      },
+      "additionalProperties": false
+    },
+    "stability": {
+      "type": "object",
+      "required": ["priorLayoutWeight", "maximumUnrelatedMovement"],
+      "properties": {
+        "priorLayoutWeight": { "type": "number", "minimum": 0 },
+        "maximumUnrelatedMovement": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "performance": {
+      "type": "object",
+      "required": ["checkpointIntervalMs", "maxSolveMilliseconds"],
+      "properties": {
+        "checkpointIntervalMs": { "type": "integer", "minimum": 1 },
+        "maxSolveMilliseconds": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

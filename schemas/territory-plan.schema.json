@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/territory-plan.schema.json",
+  "title": "Lubanda Milestone 2 Accepted Territory Plan",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "engineVersion",
+    "territoryPlanId",
+    "status",
+    "selectedRootId",
+    "sourceChecksum",
+    "seed",
+    "templateBoundary",
+    "templatePolygon",
+    "usableBounds",
+    "rootEntryReservation",
+    "territories",
+    "junctionZones",
+    "corridors",
+    "negotiation",
+    "diagnostics",
+    "validation",
+    "configurationUsed",
+    "demandFingerprint",
+    "deterministicFingerprint"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "engineVersion": { "const": "0.2.0" },
+    "territoryPlanId": { "type": "string", "minLength": 1 },
+    "status": { "const": "ACCEPTED" },
+    "selectedRootId": { "type": "string", "minLength": 1 },
+    "sourceChecksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "seed": { "type": "integer" },
+    "templateBoundary": { "$ref": "#/$defs/templateBoundary" },
+    "templatePolygon": { "$ref": "#/$defs/polygon" },
+    "usableBounds": { "$ref": "#/$defs/bounds" },
+    "rootEntryReservation": { "$ref": "#/$defs/rootEntry" },
+    "territories": { "type": "array", "items": { "$ref": "#/$defs/territory" } },
+    "junctionZones": { "type": "array", "items": { "$ref": "#/$defs/junction" } },
+    "corridors": { "type": "array", "items": { "$ref": "#/$defs/corridor" } },
+    "negotiation": { "$ref": "#/$defs/negotiation" },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "validation": { "$ref": "#/$defs/validation" },
+    "configurationUsed": { "$ref": "#/$defs/territoryConfiguration" },
+    "demandFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "deterministicFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "vec2": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } },
+      "additionalProperties": false
+    },
+    "polygon": {
+      "type": "object",
+      "required": ["points"],
+      "properties": {
+        "points": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/vec2" } }
+      },
+      "additionalProperties": false
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "templateBoundary": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "polygon"],
+          "properties": {
+            "kind": { "const": "POLYGON" },
+            "polygon": { "$ref": "#/$defs/polygon" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "center", "radiusX", "radiusY"],
+          "properties": {
+            "kind": { "const": "ELLIPSE" },
+            "center": { "$ref": "#/$defs/vec2" },
+            "radiusX": { "type": "number", "exclusiveMinimum": 0 },
+            "radiusY": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "parameters"],
+          "properties": {
+            "kind": { "const": "ARCH" },
+            "parameters": {
+              "type": "object",
+              "required": ["centerX", "baselineY", "radiusX", "radiusY", "rootZoneDepth"],
+              "properties": {
+                "centerX": { "type": "number" },
+                "baselineY": { "type": "number" },
+                "radiusX": { "type": "number", "exclusiveMinimum": 0 },
+                "radiusY": { "type": "number", "exclusiveMinimum": 0 },
+                "rootZoneDepth": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rootEntry": {
+      "type": "object",
+      "required": ["id", "ownerRootId", "polygon", "center", "width", "depth", "boundaryMargin"],
+      "properties": {
+        "id": { "const": "root-entry" },
+        "ownerRootId": { "type": "string", "minLength": 1 },
+        "polygon": { "$ref": "#/$defs/polygon" },
+        "center": { "$ref": "#/$defs/vec2" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "depth": { "type": "number", "exclusiveMinimum": 0 },
+        "boundaryMargin": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "territory": {
+      "type": "object",
+      "required": [
+        "id", "ownerLineageRootId", "parentTerritoryId", "parentOwnerId",
+        "polygon", "centroid", "area", "requiredArea", "allocatedShare",
+        "demandShare", "boundaryMargin", "clearanceEnvelope", "junctionZoneId",
+        "entryCorridorId", "childTerritoryIds", "fragmentCount"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "ownerLineageRootId": { "type": "string", "minLength": 1 },
+        "parentTerritoryId": { "type": "null" },
+        "parentOwnerId": { "type": "string", "minLength": 1 },
+        "polygon": { "$ref": "#/$defs/polygon" },
+        "centroid": { "$ref": "#/$defs/vec2" },
+        "area": { "type": "number", "exclusiveMinimum": 0 },
+        "requiredArea": { "type": "number", "exclusiveMinimum": 0 },
+        "allocatedShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "demandShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "boundaryMargin": { "type": "number", "minimum": 0 },
+        "clearanceEnvelope": {
+          "type": "object",
+          "required": ["inset", "polygon"],
+          "properties": {
+            "inset": { "type": "number", "minimum": 0 },
+            "polygon": { "$ref": "#/$defs/polygon" }
+          },
+          "additionalProperties": false
+        },
+        "junctionZoneId": { "type": "string", "minLength": 1 },
+        "entryCorridorId": { "type": "string", "minLength": 1 },
+        "childTerritoryIds": { "type": "array", "items": { "type": "string" } },
+        "fragmentCount": { "const": 1 }
+      },
+      "additionalProperties": false
+    },
+    "junction": {
+      "type": "object",
+      "required": ["id", "ownerLineageRootId", "center", "radius", "polygon"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "ownerLineageRootId": { "type": "string", "minLength": 1 },
+        "center": { "$ref": "#/$defs/vec2" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "polygon": { "$ref": "#/$defs/polygon" }
+      },
+      "additionalProperties": false
+    },
+    "corridor": {
+      "type": "object",
+      "required": [
+        "id", "ownerLineageRootId", "fromReservationId", "toTerritoryId",
+        "viaJunctionZoneId", "entryPoint", "exitPoint", "centerline", "width", "usableLength", "clearance",
+        "reservationMode"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "ownerLineageRootId": { "type": "string", "minLength": 1 },
+        "fromReservationId": { "const": "root-entry" },
+        "toTerritoryId": { "type": "string", "minLength": 1 },
+        "viaJunctionZoneId": { "type": "string", "minLength": 1 },
+        "entryPoint": { "$ref": "#/$defs/vec2" },
+        "exitPoint": { "$ref": "#/$defs/vec2" },
+        "centerline": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/vec2" } },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "usableLength": { "type": "number", "exclusiveMinimum": 0 },
+        "clearance": { "type": "number", "minimum": 0 },
+        "reservationMode": { "const": "EASEMENT" }
+      },
+      "additionalProperties": false
+    },
+    "movement": {
+      "type": "object",
+      "required": ["iteration", "territoryId", "before", "after", "areaBefore", "areaAfter", "transferredArea"],
+      "properties": {
+        "iteration": { "type": "integer", "minimum": 1 },
+        "territoryId": { "type": "string", "minLength": 1 },
+        "before": { "$ref": "#/$defs/polygon" },
+        "after": { "$ref": "#/$defs/polygon" },
+        "areaBefore": { "type": "number", "minimum": 0 },
+        "areaAfter": { "type": "number", "minimum": 0 },
+        "transferredArea": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "negotiation": {
+      "type": "object",
+      "required": ["status", "iterations", "maximumIterations", "finalMaximumAreaErrorRatio", "movements", "convergenceReason"],
+      "properties": {
+        "status": { "enum": ["NOT_REQUIRED", "CONVERGED", "FAILED"] },
+        "iterations": { "type": "integer", "minimum": 0 },
+        "maximumIterations": { "type": "integer", "minimum": 1 },
+        "finalMaximumAreaErrorRatio": { "type": "number", "minimum": 0 },
+        "movements": { "type": "array", "items": { "$ref": "#/$defs/movement" } },
+        "convergenceReason": {
+          "enum": ["INITIAL_PLAN_VALID", "AREA_TARGET_REACHED", "ITERATION_LIMIT", "IMPOSSIBLE_CONSTRAINT"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["sequence", "stage", "code", "metrics"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 0 },
+        "stage": { "enum": ["INITIAL_ALLOCATION", "CORRIDOR_PLANNING", "NEGOTIATION", "VALIDATION"] },
+        "code": { "type": "string", "minLength": 1 },
+        "territoryId": { "type": "string", "minLength": 1 },
+        "ownerLineageRootId": { "type": "string", "minLength": 1 },
+        "metrics": { "type": "object", "additionalProperties": { "type": "number" } },
+        "rejectionReason": {
+          "enum": [
+            "INSUFFICIENT_TEMPLATE_AREA", "INVALID_TEMPLATE", "EMPTY_POWER_CELL",
+            "MINIMUM_AREA_UNSATISFIED", "CORRIDOR_IMPOSSIBLE",
+            "NEGOTIATION_DID_NOT_CONVERGE", "INVALID_POLYGON", "DISCONNECTED_REGION"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "required": ["accepted", "issues", "metrics"],
+      "properties": {
+        "accepted": { "const": true },
+        "issues": { "type": "array", "maxItems": 0 },
+        "metrics": {
+          "type": "object",
+          "required": [
+            "includedMajorLineageCount", "territoryCount", "corridorCount",
+            "invalidPolygonCount", "overlapCount", "missingOwnershipCount",
+            "invalidCorridorCount", "minimumAreaDeficitCount",
+            "totalAllocatedArea", "templateArea"
+          ],
+          "properties": {
+            "includedMajorLineageCount": { "type": "integer", "minimum": 0 },
+            "territoryCount": { "type": "integer", "minimum": 0 },
+            "corridorCount": { "type": "integer", "minimum": 0 },
+            "invalidPolygonCount": { "const": 0 },
+            "overlapCount": { "const": 0 },
+            "missingOwnershipCount": { "const": 0 },
+            "invalidCorridorCount": { "const": 0 },
+            "minimumAreaDeficitCount": { "const": 0 },
+            "totalAllocatedArea": { "type": "number", "minimum": 0 },
+            "templateArea": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "territoryConfiguration": {
+      "type": "object",
+      "required": [
+        "maxNegotiationIterations", "minimumCorridorWidth", "minimumCorridorLength",
+        "corridorClearance", "minimumTerritoryArea", "boundaryMargin",
+        "junctionZoneRadius", "rootEntryWidth", "rootEntryDepth",
+        "maximumAreaErrorRatio", "convergenceTolerance", "seedJitter",
+        "boundarySamplingPoints", "maximumFragmentCount", "roundingDecimalPlaces"
+      ],
+      "properties": {
+        "maxNegotiationIterations": { "type": "integer", "minimum": 1 },
+        "minimumCorridorWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "minimumCorridorLength": { "type": "number", "exclusiveMinimum": 0 },
+        "corridorClearance": { "type": "number", "minimum": 0 },
+        "minimumTerritoryArea": { "type": "number", "exclusiveMinimum": 0 },
+        "boundaryMargin": { "type": "number", "minimum": 0 },
+        "junctionZoneRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "rootEntryWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "rootEntryDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "maximumAreaErrorRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "convergenceTolerance": { "type": "number", "exclusiveMinimum": 0 },
+        "seedJitter": { "type": "number", "minimum": 0, "maximum": 0.49 },
+        "boundarySamplingPoints": { "type": "integer", "minimum": 12, "maximum": 512 },
+        "maximumFragmentCount": { "const": 1 },
+        "roundingDecimalPlaces": { "type": "integer", "minimum": 0, "maximum": 12 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

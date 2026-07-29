@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1148" viewBox="-120 -180 6436.773353931867 4620">
+<style>.label{font:700 34px monospace;fill:#102a43}.small{font:24px monospace;fill:#243b53}.tiny{font:18px monospace;fill:#4a3500}.title{font:700 48px sans-serif;fill:#102a43}</style>
+<rect x="-120" y="-180" width="6436.773353931867" height="4620" fill="#fbfcfe"/>
+<text x="0" y="-105" class="title">Lubanda Milestone 2 — Engineering Territory Diagnostic</text>
+<text x="0" y="-55" class="small">root 1 · people 1386 · seed 1386 · validation ACCEPTED</text>
+<polygon points="0,0 6196.773354,0 6196.773354,4000 0,4000" fill="#eef3f8" stroke="#111827" stroke-width="12"/>
+<polygon points="24,128 3364.472094,128 3765.422931,3976 24,3976" fill="none" stroke="#9b5de5" stroke-width="4" stroke-dasharray="16 12" opacity="0.75"/>
+<polygon points="3364.472094,128 6172.773354,128 6172.773354,3976 3765.422931,3976" fill="none" stroke="#9b5de5" stroke-width="4" stroke-dasharray="16 12" opacity="0.75"/>
+<polygon points="24,128 3364.472094,128 3765.422931,3976 24,3976" fill="#5b8ff9" fill-opacity="0.22" stroke="#19324d" stroke-width="8"/>
+<polygon points="32,136 3357.262361,136 3756.546042,3968 32,3968" fill="none" stroke="#607d8b" stroke-width="5" stroke-dasharray="18 12"/>
+<text x="1796.3654530006988" y="2070.3099334130557" text-anchor="middle" class="label">territory:2</text>
+<text x="1796.3654530006988" y="2106.3099334130557" text-anchor="middle" class="small">owner 2</text>
+<text x="1796.3654530006988" y="2140.3099334130557" text-anchor="middle" class="small">demand 4416879.9 · area 13625566.0</text>
+<line x1="3098.386677" y1="72" x2="1796.3654530006988" y2="2088.3099334130557" stroke="#8d99ae" stroke-width="3" stroke-dasharray="12 12"/>
+<polygon points="3364.472094,128 6172.773354,128 6172.773354,3976 3765.422931,3976" fill="#61d9a3" fill-opacity="0.22" stroke="#19324d" stroke-width="8"/>
+<polygon points="3373.348983,136 6164.773354,136 6164.773354,3968 3772.632664,3968" fill="none" stroke="#607d8b" stroke-width="5" stroke-dasharray="18 12"/>
+<text x="4866.291857236528" y="1984.6977934063088" text-anchor="middle" class="label">territory:487</text>
+<text x="4866.291857236528" y="2020.6977934063088" text-anchor="middle" class="small">owner 487</text>
+<text x="4866.291857236528" y="2054.697793406309" text-anchor="middle" class="small">demand 3028485.9 · area 10034913.8</text>
+<line x1="3098.386677" y1="72" x2="4866.291857236528" y2="2002.6977934063088" stroke="#8d99ae" stroke-width="3" stroke-dasharray="12 12"/>
+<polyline points="3098.386677,72 2811.942007720154,515.5881853508722 1796.3654530006988,2088.3099334130557" fill="none" stroke="#006d77" stroke-width="24" stroke-opacity="0.45"/><polyline points="3098.386677,72 2811.942007720154,515.5881853508722 1796.3654530006988,2088.3099334130557" fill="none" stroke="#004c54" stroke-width="5"/>
+<polyline points="3098.386677,72 3487.3258166520363,496.75351454938794 4866.291857236528,2002.6977934063088" fill="none" stroke="#006d77" stroke-width="24" stroke-opacity="0.45"/><polyline points="3098.386677,72 3487.3258166520363,496.75351454938794 4866.291857236528,2002.6977934063088" fill="none" stroke="#004c54" stroke-width="5"/>
+<polygon points="2811.942008,479.588185 2825.718611,482.328522 2837.397852,490.132341 2845.201671,501.811582 2847.942008,515.588185 2845.201671,529.364789 2837.397852,541.044029 2825.718611,548.847849 2811.942008,551.588185 2798.165404,548.847849 2786.486164,541.044029 2778.682345,529.364789 2775.942008,515.588185 2778.682345,501.811582 2786.486164,490.132341 2798.165404,482.328522" fill="#ffb703" fill-opacity="0.28" stroke="#9c6500" stroke-width="5"/><text x="2811.942007720154" y="515.5881853508722" text-anchor="middle" class="tiny">junction:2</text>
+<polygon points="3487.325817,460.753515 3501.10242,463.493851 3512.781661,471.29767 3520.58548,482.976911 3523.325817,496.753515 3520.58548,510.530118 3512.781661,522.209359 3501.10242,530.013178 3487.325817,532.753515 3473.549213,530.013178 3461.869973,522.209359 3454.066153,510.530118 3451.325817,496.753515 3454.066153,482.976911 3461.869973,471.29767 3473.549213,463.493851" fill="#ffb703" fill-opacity="0.28" stroke="#9c6500" stroke-width="5"/><text x="3487.3258166520363" y="496.75351454938794" text-anchor="middle" class="tiny">junction:487</text>
+<polygon points="3062.386677,24 3134.386677,24 3134.386677,120 3062.386677,120" fill="#ef476f" fill-opacity="0.28" stroke="#9d174d" stroke-width="7"/>
+<text x="3098.386677" y="72" text-anchor="middle" class="small">root/trunk entry</text>
+<polygon points="5846.773353931867,70 5986.773353931867,70 5881.773353931867,90" fill="#ff0000" fill-opacity="0.12" stroke="#d00000" stroke-width="5" stroke-dasharray="12 9"/>
+<text x="5836.773353931867" y="50" text-anchor="end" class="tiny">rejected diagnostic candidate: insufficient/degenerate</text>
+<text x="0" y="4110" class="label">Legend / validation</text>
+<text x="0" y="4160" class="small">solid outline: accepted territory · dashed gray: boundary-margin clearance envelope</text>
+<text x="0" y="4205" class="small">purple dashed: initial outline (identical; no transfer required) · green: preliminary corridor · amber: junction reservation</text>
+<text x="0" y="4250" class="small">parent-child relation: root-entry to major-lineage territory · blocking issues: 0</text>
+<text x="0" y="4295" class="small">negotiation: NOT_REQUIRED in 0 iteration(s) · 2 territories · 2 corridors</text>
+</svg>

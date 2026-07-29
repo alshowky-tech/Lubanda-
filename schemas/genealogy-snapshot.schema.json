@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lubanda.local/schemas/genealogy-snapshot.schema.json",
+  "title": "Lubanda Accepted Genealogy Snapshot",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "revisionId",
+    "persons",
+    "sourceChecksum",
+    "createdAt",
+    "validationVersion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "projectId": { "type": "string", "minLength": 1 },
+    "revisionId": { "type": "string", "minLength": 1 },
+    "persons": {
+      "type": "array",
+      "items": { "$ref": "person.schema.json" }
+    },
+    "sourceChecksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "validationVersion": { "const": "1.0" }
+  },
+  "additionalProperties": false
+}
+
