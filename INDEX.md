@@ -9,6 +9,7 @@
 - `docs/decisions/0001-milestone-1-contract-clarifications.md` — approved Core v1 clarifications.
 - `docs/decisions/0002-milestone-2-contract-extension.md` — additive Milestone 2 contract decision.
 - `docs/decisions/0003-milestone-3-skeleton-contract.md` — Milestone 3 skeleton growth decision.
+- `docs/decisions/0004-milestone-4-1-2-label-integration.md` — label/skeleton integration contract.
 - `docs/catalogs/milestone-2-issues-and-diagnostics.md` — issue and diagnostic catalog.
 - `docs/traceability/milestone-1-matrix.md` — preserved baseline traceability.
 - `docs/traceability/milestone-2-matrix.md` — Milestone 2 traceability.
@@ -17,3 +18,5 @@
 - `docs/milestone-2-completion-report.md` — M2 completion evidence.
 - `docs/milestone-2-known-limitations.md` — known limits and risks.
 - `docs/milestone-3-proposed-file-plan.md` — approval-gated M3 file plan.
+- `docs/milestone-4-1-2-completion-report.md` — M4.1.2 implementation and acceptance evidence.
+- `docs/traceability/milestone-4-1-2-matrix.md` — M4.1.2 requirement-to-test mapping.

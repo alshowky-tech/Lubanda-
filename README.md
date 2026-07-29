@@ -1,12 +1,13 @@
-# Lubanda Core — Milestone 3
+# Lubanda Core — Milestone 4.1.2
 
-This repository preserves Milestones 1 and 2 and implements the third approved
-engineering milestone of the Lubanda Natural Genealogy Growth Platform:
+This repository preserves the accepted genealogy, territory, and skeleton
+foundations and implements Milestone 4.1.2 — Label Integration with Skeleton
+Geometry:
 
-`Territory Plan → Trunk Centerline → Junction Planning → Recursive Skeleton Growth → Candidate Generation → Hard Rejection → Deterministic Scoring → Skeleton Validation → Diagnostics → Automated Tests → Documentation`
+`Accepted Skeleton → Deterministic Label Anchors → Boundary Filtering → Wood/Label Collision Queries → Candidate Assignment → Unresolved-Label Diagnostics`
 
-It intentionally contains no routing, collision solving, label engine, artistic
-renderer, AI adapter, or export engine.
+It intentionally contains no renderer, UI, persistence layer, export engine,
+AI adapter, Arabic shaping/text measurement engine, or incremental reflow.
 
 ## Pipeline
 
@@ -56,6 +57,14 @@ npm run benchmark:official
 - Approved Core v1 contract clarifications dated 2026-07-27
 - ADR 0003 — Milestone 3 Skeleton Growth Contract
 
-## Corrective label-assignment layer
+## Milestone 4.1.2 label integration
 
-This corrective package adds deterministic label candidate identity, collision queries, and greedy assignment. Rendering, export, AI bark generation, and incremental stability remain out of scope.
+The integration layer selects one deterministic terminal branch per person,
+generates 24 geometry-derived candidates at three positions along that branch,
+rejects candidates outside concave or convex template boundaries, converts the
+sampled skeleton (including bark allowance and taper) into wood obstacles, and
+assigns non-overlapping labels. A partial result carries one deterministic
+`LABEL_UNRESOLVED` diagnostic per unplaced person.
+
+See `docs/milestone-4-1-2-completion-report.md` for the acceptance evidence and
+scope exclusions.

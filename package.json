@@ -1,9 +1,9 @@
 {
   "name": "@lubanda/core",
-  "version": "0.3.1-corrective",
+  "version": "0.4.2",
   "private": true,
   "type": "module",
-  "description": "Lubanda Natural Genealogy Growth Platform — corrective skeleton and deterministic label assignment core",
+  "description": "Lubanda Natural Genealogy Growth Platform — skeleton-integrated deterministic label layout core",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
