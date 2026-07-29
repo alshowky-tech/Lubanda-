@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1.0",
+  "milestone": "BOTANICAL_GROWTH_INTELLIGENCE",
+  "sourceFileName": "ديوان_آل_الشوكي_شجرة_الأنساب_2026 (3).xlsx",
+  "sourceFileSha256Before": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "sourceFileSha256After": "5f6b25d5eb4223054821af4e2959038f71d5b70b8be015737f3a2f1cb1a65e45",
+  "sourceDatasetUnchanged": true,
+  "totalPeople": 1386,
+  "totalBranches": 1388,
+  "invariants": {
+    "genealogyUnchanged": true,
+    "topologyAndOwnershipUnchanged": true,
+    "territoriesUnchanged": true,
+    "deterministicReplayMatched": true
+  },
+  "validation": {
+    "skeletonAccepted": true,
+    "branchIntersections": 0,
+    "outOfBoundsBranches": 0,
+    "labelOverlaps": 0,
+    "woodPenetrations": 0,
+    "unresolvedLabels": 0
+  },
+  "metrics": {
+    "territoryOccupancy": {
+      "before": 0.177469,
+      "after": 0.180556
+    },
+    "canopyDensityVariance": {
+      "before": 198.882335,
+      "after": 198.858968
+    },
+    "branchAngleEntropy": {
+      "before": 0.560115,
+      "after": 0.556576
+    },
+    "averageCurvature": {
+      "before": 0.001522,
+      "after": 0.023863
+    },
+    "emptySpaceUtilization": {
+      "before": 0.177469,
+      "after": 0.180556
+    },
+    "branchLengthVariance": {
+      "before": 32276.053087,
+      "after": 31784.168425
+    },
+    "symmetryScore": {
+      "before": 0.20814,
+      "after": 0.207998
+    },
+    "movedBranches": 1385,
+    "acceptedIntensity": 0.2,
+    "growthVectorCount": 1385
+  },
+  "localRelaxation": {
+    "status": "UNCHANGED",
+    "movedBranchCount": 0,
+    "acceptedIterationCount": 0,
+    "deterministicFingerprint": "9d59ed64429d47249dc524cf106010bb640828984c89d17c841a848258e130bb"
+  },
+  "artifacts": {
+    "currentArborIvySvg": "artifacts/golden-botanical-growth-intelligence-current-arbor-ivy.svg",
+    "currentArborIvyPng": "artifacts/golden-botanical-growth-intelligence-current-arbor-ivy.png",
+    "bgiResultSvg": "artifacts/golden-botanical-growth-intelligence-bgi-result.svg",
+    "bgiResultPng": "artifacts/golden-botanical-growth-intelligence-bgi-result.png",
+    "differenceOverlaySvg": "artifacts/golden-botanical-growth-intelligence-difference-overlay.svg",
+    "differenceOverlayPng": "artifacts/golden-botanical-growth-intelligence-difference-overlay.png",
+    "growthVectorsSvg": "artifacts/golden-botanical-growth-intelligence-growth-vectors.svg",
+    "growthVectorsPng": "artifacts/golden-botanical-growth-intelligence-growth-vectors.png",
+    "densityHeatmapSvg": "artifacts/golden-botanical-growth-intelligence-density-heatmap.svg",
+    "densityHeatmapPng": "artifacts/golden-botanical-growth-intelligence-density-heatmap.png",
+    "currentSvgSha256": "36ed2ae42305621cce81aa4348c4a88f880c47deeda192d011d4db2357fafc47",
+    "resultSvgSha256": "9896e3b0c75b04f329078d06c11580240d0e658abf78b27ed70630f47b8f9b4c",
+    "currentPngSha256": "f5134c531246bef0ac7091ef56566888d227cc8cd42de47c13851f9238f77971",
+    "resultPngSha256": "7b2abc7ad6228f4709840dbf6edfdbb8cb86bfb3cfef8f5bf1cf3e30fd07fc84",
+    "overlayPngSha256": "4430d4c6ac6eb81807004bacf9e6055eda4d84455c288c09bf3b412a07f192b0",
+    "vectorsPngSha256": "88f78c284aeb16f466a15e43f65e553e9dc16f70122979ca8bbb219cf7018f94",
+    "heatmapPngSha256": "829c1c0d5f5998cdc0fde75cfa04db24a234a259a1ed26a524721fdb13a1b521"
+  },
+  "deterministicFingerprint": "b7b81014db1d0146ad2e86c0e93602575ce6d973c59e49730306a57ee6dd2517",
+  "totalRuntimeMilliseconds": 13970.575698,
+  "peakMemoryUsageBytes": 1088561152,
+  "stageRuntimesMilliseconds": {
+    "readWorkbook": 2.470698,
+    "importWorkbook": 119.617961,
+    "validateGenealogy": 3.200142,
+    "demand": 20.439617,
+    "territories": 6.053858,
+    "baseSkeleton": 266.127587,
+    "arborIvy": 177.27264,
+    "currentLabels": 1893.228807,
+    "bgi": 1094.804971,
+    "replayBgi": 954.085907,
+    "bgiLabels": 1921.072502,
+    "localRelaxation": 678.303536,
+    "replayLabels": 1926.259082,
+    "replayLocalRelaxation": 676.741912,
+    "validateFinal": 86.487908,
+    "currentSvg": 26.965485,
+    "resultSvg": 27.571205,
+    "currentPng": 643.209817,
+    "resultPng": 765.603384,
+    "overlayPng": 937.485656,
+    "vectorsPng": 760.861424,
+    "heatmapPng": 802.586663
+  }
+}

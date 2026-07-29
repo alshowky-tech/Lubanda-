@@ -21,6 +21,7 @@
     "preview:golden": "node --import tsx scripts/export-golden-preview.ts",
     "golden:e2e": "node --import tsx scripts/compare-golden-local-relaxation.ts",
     "golden:territory-growth": "node --import tsx scripts/compare-golden-territory-growth.ts",
+    "golden:growth-intelligence": "node --import tsx scripts/compare-golden-growth-intelligence.ts",
     "prototype:arbor-ivy": "node --import tsx scripts/prototype-arbor-ivy-subset.ts",
     "manifest": "node --import tsx scripts/generate-file-manifest.ts"
   },
