@@ -14,7 +14,7 @@ import {
   buildAcceptedGenealogySnapshot,
   buildGenealogyGraph,
 } from "../src/core/genealogy/index.js";
-import { XlsxGenealogyImporter } from "../src/core/import/index.js";
+import { XlsxGenealogyImporter, CsvGenealogyImporter } from "../src/core/import/index.js";
 import {
   buildSkeletonWoodObstacles,
   LabelCollisionQuery,
@@ -125,8 +125,12 @@ const countWoodPenetrations = (
 
 const initialBytes = await timed("readWorkbook", () => fs.readFile(workbookPath));
 const sourceFileSha256Before = sha256Bytes(initialBytes);
+const isCsv = workbookPath.toLowerCase().endsWith('.csv');
+const importerInstance = isCsv
+  ? new CsvGenealogyImporter()
+  : new XlsxGenealogyImporter();
 const imported = await timed("importWorkbook", () =>
-  new XlsxGenealogyImporter().importWorkbook(
+  importerInstance.importWorkbook(
     initialBytes.buffer.slice(
       initialBytes.byteOffset,
       initialBytes.byteOffset + initialBytes.byteLength,

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "milestone": "SKELETON_ENGINE_2_0",
+  "sourceFileName": "lubanda_golden_dataset.csv",
+  "sourceFileSha256": "6326335ebcab3b41c8b583c37d344ec8bfadf2005931be7585a3bc77d3d8454d",
+  "datasetUnmodified": true,
+  "totalPeople": 1386,
+  "totalBranches": 1388,
+  "branchRoleClassification": {
+    "TRUNK": 3,
+    "PRIMARY": 2,
+    "SECONDARY": 5,
+    "TWIG": 476,
+    "TERMINAL_TWIG": 902
+  },
+  "branchVerticalZones": {
+    "ROOT_ZONE": 543,
+    "TRUNK_ZONE": 762,
+    "INNER_CANOPY": 80,
+    "OUTER_CANOPY": 3
+  },
+  "branchLengthByRole": {
+    "TRUNK": {
+      "count": 3,
+      "mean": 442.96975366666675,
+      "min": 77.338228,
+      "max": 675.646383,
+      "total": 1328.9092610000002
+    },
+    "PRIMARY": {
+      "count": 2,
+      "mean": 1957.0194895,
+      "min": 1872.124311,
+      "max": 2041.914668,
+      "total": 3914.038979
+    },
+    "SECONDARY": {
+      "count": 5,
+      "mean": 671.1694858,
+      "min": 197.797553,
+      "max": 1086.04069,
+      "total": 3355.847429
+    },
+    "TWIG": {
+      "count": 476,
+      "mean": 224.61874317226912,
+      "min": 177.209292,
+      "max": 630.456453,
+      "total": 106918.5217500001
+    },
+    "TERMINAL_TWIG": {
+      "count": 902,
+      "mean": 211.13450226940296,
+      "min": 177.209292,
+      "max": 413.105933,
+      "total": 190443.32104700146
+    }
+  },
+  "skeletonAccepted": true,
+  "validationAccepted": true,
+  "branchIntersections": 0,
+  "outOfBounds": 0,
+  "territoryMisses": 0,
+  "labelsPlaced": 1386,
+  "labelsUnresolved": 0,
+  "labelsAccepted": true,
+  "labelOverlaps": 0,
+  "woodPenetrations": 0,
+  "labelStageStatus": "ACCEPTED",
+  "deterministicFingerprint": "98c4e400469bc63d7b35701e56f8cd03af182fa606b28c6599f9444009d5ea33",
+  "fingerprint1": "32202e2c61a590c35a449fd75500034aa7ccf3663b30dcce97e1be3068711f71",
+  "fingerprint2": "32202e2c61a590c35a449fd75500034aa7ccf3663b30dcce97e1be3068711f71",
+  "deterministicReplayMatched": true,
+  "skeletonMetrics": {
+    "trunkSegments": 3,
+    "trunkLength": 1328.909261,
+    "branchCount": 1388,
+    "nodeCount": 1389,
+    "maxGenealogyDepth": 12,
+    "maxSkeletonDepth": 12
+  },
+  "totalRuntimeMilliseconds": 78740.661,
+  "peakMemoryUsageBytes": 332660736,
+  "stageRuntimesMilliseconds": {
+    "readWorkbook": 12.125,
+    "importWorkbook": 14.9,
+    "validateGenealogy": 5.294,
+    "demand": 36.7,
+    "territories": 6.65,
+    "skeleton": 866.923,
+    "validateSkeleton": 183.882,
+    "labels": 38457.393,
+    "replaySkeleton": 830.728,
+    "replayLabels": 38232.005,
+    "preview": 62.37
+  }
+}
