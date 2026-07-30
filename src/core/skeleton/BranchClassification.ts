@@ -181,21 +181,25 @@ export const determineVerticalZone = (
 
 /**
  * Check if a candidate's end point violates the zone vertical policy.
+ * Uses templateHeight for translation-invariant comparison.
  * Returns true if the movement is allowed.
  */
 export const isDescentAllowed = (
   startY: number,
   endY: number,
   zone: VerticalZone,
+  templateHeight: number,
 ): boolean => {
   const policy = ZONE_VERTICAL_POLICIES[zone];
   if (policy.maxDescentRatio <= 0) {
     // No descent allowed — endY must be above or equal to startY
     return endY <= startY + 1e-9;
   }
-  // Controlled descent: endY can be below startY by at most maxDescentRatio
+  // Controlled descent: endY can be below startY by at most maxDescentRatio * templateHeight
+  // Uses templateHeight (not startY) for translation invariance
   const descent = endY - startY; // positive = moving down
-  return descent <= policy.maxDescentRatio * Math.abs(startY);
+  const maxAllowed = policy.maxDescentRatio * templateHeight;
+  return descent <= maxAllowed + 1e-9;
 };
 
 // ── Enhanced score factor computation ─────────────────────────────────
@@ -227,6 +231,7 @@ export const computeZoneComplianceScore = (
   verticalZone: VerticalZone,
   startY: number,
   endY: number,
+  templateHeight: number,
 ): number => {
   const policy = ZONE_VERTICAL_POLICIES[verticalZone];
   if (policy.maxDescentRatio <= 0) {
@@ -234,9 +239,10 @@ export const computeZoneComplianceScore = (
     if (endY > startY + 1e-9) return 0;
     return 1.0; // Upward growth is ideal
   }
-  // For zones that allow descent, score based on how much of the budget is used
+  // For zones that allow descent, score based on how much of the budget is used.
+  // Uses templateHeight for translation invariance.
   const descent = Math.max(0, endY - startY);
-  const maxAllowed = policy.maxDescentRatio * Math.abs(startY);
+  const maxAllowed = policy.maxDescentRatio * templateHeight;
   if (maxAllowed <= 0) return descent <= 0 ? 1.0 : 0;
   return Math.max(0, 1 - descent / maxAllowed);
 };

@@ -276,6 +276,16 @@ export interface CandidateGenerationInput {
   readonly candidateCount: number;
   readonly genealogyDepth: number;
   readonly roundingDecimalPlaces: number;
+  // Skeleton Engine 2.0 integration fields
+  readonly branchRole: SkeletonBranchRole;
+  readonly verticalZone: VerticalZone;
+  readonly templateHeight: number;
+  readonly parentRole: SkeletonBranchRole | null;
+  readonly siblingDirections: readonly number[];
+  readonly existingEndpoints: readonly Vec2[];
+  readonly descendantCount: number;
+  readonly totalDescendants: number;
+  readonly isTerminal: boolean;
 }
 
 // ── Engine contract ───────────────────────────────────────────────────

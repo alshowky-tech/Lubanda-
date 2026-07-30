@@ -498,6 +498,38 @@ export class DeterministicSkeletonGrowthEngine
               y: Math.max(bounds.minY + 10, Math.min(bounds.maxY - 10, rawAttemptEnd.y)),
             }
           : rawAttemptEnd;
+        // Compute role and zone BEFORE candidate generation
+        const preRole = classifyBranchRole(
+          genealogyDepth, skeletonDepth,
+          children.length === 0,
+          input.graph.getSubtree(personId).length,
+          input.graph.getSubtree(input.selectedRootId).length,
+        ) as SkeletonBranchRole;
+        const preZone = determineVerticalZone(startPoint.y, bounds);
+        const templateHeight = bounds.maxY - bounds.minY;
+        
+        // Existing endpoints for free-space seeking
+        const existingEndpoints: Vec2[] = [];
+        for (const eb of existingBranches) {
+          const ebr = branches.get(eb.id);
+          if (ebr) existingEndpoints.push(ebr.endPoint);
+        }
+        
+        // Sibling directions
+        const siblingDirs: number[] = [];
+        const parentBr = parentBranchId ? branches.get(parentBranchId) : null;
+        if (parentBr) {
+          for (const sid of parentBr.childrenBranchIds) {
+            const sib = branches.get(sid);
+            if (sib && sib.ownerPersonId !== personId) {
+              siblingDirs.push(Math.atan2(
+                sib.endPoint.y - sib.startPoint.y,
+                sib.endPoint.x - sib.startPoint.x,
+              ));
+            }
+          }
+        }
+
         const candidateInput: CandidateGenerationInput = {
           startPoint,
           endPoint: attemptEnd,
@@ -519,13 +551,21 @@ export class DeterministicSkeletonGrowthEngine
           candidateCount: input.configuration.candidateCount,
           genealogyDepth,
           roundingDecimalPlaces: decimalPlaces,
+          branchRole: preRole,
+          verticalZone: preZone,
+          templateHeight,
+          parentRole: parentBr ? parentBr.branchRole as SkeletonBranchRole : null,
+          siblingDirections: siblingDirs,
+          existingEndpoints,
+          descendantCount: input.graph.getSubtree(personId).length,
+          totalDescendants: input.graph.getSubtree(input.selectedRootId).length,
+          isTerminal: children.length === 0,
         };
         const candidates = generateBranchCandidates(candidateInput);
         const indexOffset = attemptedCandidates.length;
         const scored = scoreBranchCandidates(
           candidates,
-          parentDirection ?? TRUNK_UPWARD_DIRECTION,
-          attractorField,
+          candidateInput,
           input.seed + skeletonDepth * 17 + directionAttempt * 997,
         ).map((candidate) => ({
           ...candidate,

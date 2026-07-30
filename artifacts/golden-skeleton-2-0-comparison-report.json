@@ -67,9 +67,9 @@
   "labelOverlaps": 0,
   "woodPenetrations": 0,
   "labelStageStatus": "ACCEPTED",
-  "deterministicFingerprint": "98c4e400469bc63d7b35701e56f8cd03af182fa606b28c6599f9444009d5ea33",
-  "fingerprint1": "32202e2c61a590c35a449fd75500034aa7ccf3663b30dcce97e1be3068711f71",
-  "fingerprint2": "32202e2c61a590c35a449fd75500034aa7ccf3663b30dcce97e1be3068711f71",
+  "deterministicFingerprint": "79309e9bcfd61e60a326c0c239ad84885d66ae03014ee6cef918643a8bd1d774",
+  "fingerprint1": "db0a28de555c29f20e031671417addbb2f5d3c81524b6ef6ea22890c3b450fb5",
+  "fingerprint2": "db0a28de555c29f20e031671417addbb2f5d3c81524b6ef6ea22890c3b450fb5",
   "deterministicReplayMatched": true,
   "skeletonMetrics": {
     "trunkSegments": 3,
@@ -79,19 +79,19 @@
     "maxGenealogyDepth": 12,
     "maxSkeletonDepth": 12
   },
-  "totalRuntimeMilliseconds": 78740.661,
-  "peakMemoryUsageBytes": 332660736,
+  "totalRuntimeMilliseconds": 71824.164,
+  "peakMemoryUsageBytes": 338477056,
   "stageRuntimesMilliseconds": {
-    "readWorkbook": 12.125,
-    "importWorkbook": 14.9,
-    "validateGenealogy": 5.294,
-    "demand": 36.7,
-    "territories": 6.65,
-    "skeleton": 866.923,
-    "validateSkeleton": 183.882,
-    "labels": 38457.393,
-    "replaySkeleton": 830.728,
-    "replayLabels": 38232.005,
-    "preview": 62.37
+    "readWorkbook": 5.742,
+    "importWorkbook": 18.218,
+    "validateGenealogy": 4.864,
+    "demand": 34.99,
+    "territories": 6.158,
+    "skeleton": 785.363,
+    "validateSkeleton": 167.529,
+    "labels": 34433.952,
+    "replaySkeleton": 784.188,
+    "replayLabels": 35440.395,
+    "preview": 118.31
   }
 }

@@ -8,6 +8,13 @@ import { stableUnit, roundDeterministic } from "../determinism/numeric.js";
 import {
   computeAttractorForce,
 } from "./AttractorField.js";
+import {
+  ROLE_GROWTH_POLICIES,
+  computeRoleScoreBonus,
+  computeZoneComplianceScore,
+  computeSiblingCompetitionScore,
+  computeFreeSpaceScore,
+} from "./BranchClassification.js";
 import type {
   BranchCandidate,
   BranchRejectionReason,
@@ -137,25 +144,29 @@ const generateControlPoint = (
   start: Vec2,
   end: Vec2,
   startDirection: Vec2 | null,
-  fragment: number,     // 0 = near start, 1 = near end
+  fragment: number,
   seed: number,
   personId: string,
   directionBias: number,
   attractorField: AttractorField,
+  jitterScale: number,
+  attractorBias: number,
 ): Vec2 => {
   const along = lerp(start, end, 0.2 + fragment * 0.6);
   const midpoint = lerp(start, end, 0.5);
 
-  // Organic jitter
-  const jitterX = (stableUnit(`cp-jx-${personId}-${fragment}-${seed}`, seed) * 2 - 1) * 48;
-  const jitterY = (stableUnit(`cp-jy-${personId}-${fragment}-${seed}`, seed) * 2 - 1) * 48;
+  // Organic jitter — scaled by role (TWIG/TERMINAL_TWIG jitter more)
+  const baseJitter = 48;
+  const jitterX = (stableUnit(`cp-jx-${personId}-${fragment}-${seed}`, seed) * 2 - 1) * baseJitter * jitterScale;
+  const jitterY = (stableUnit(`cp-jy-${personId}-${fragment}-${seed}`, seed) * 2 - 1) * baseJitter * jitterScale;
 
-  // Attractor influence at midpoint
+  // Attractor influence — biased by role
   const attractorForce = computeAttractorForce(midpoint, attractorField, seed);
-  const attractorOffsetX = attractorForce.x * 36;
-  const attractorOffsetY = attractorForce.y * 36;
+  const baseAttractor = 36;
+  const attractorOffsetX = attractorForce.x * baseAttractor * attractorBias;
+  const attractorOffsetY = attractorForce.y * baseAttractor * attractorBias;
 
-  // Directional bias
+  // Directional bias — influenced by role persistence
   let dirBiasX = 0;
   let dirBiasY = 0;
   if (startDirection !== null) {
@@ -163,11 +174,11 @@ const generateControlPoint = (
     const len = Math.hypot(normalized.x, normalized.y);
     if (len > 1e-9) {
       dirBiasX =
-        (normalized.x / len) * directionBias * 16 +
-        (stableUnit(`dir-bias-${personId}-${fragment}`, seed + 1) * 2 - 1) * 12;
+        (normalized.x / len) * directionBias * 16 * jitterScale +
+        (stableUnit(`dir-bias-${personId}-${fragment}`, seed + 1) * 2 - 1) * 12 * jitterScale;
       dirBiasY =
-        ((normalized.y / len) * directionBias) * 20 +
-        (stableUnit(`dir-bias-y-${personId}-${fragment}`, seed + 2) * 2 - 1) * 12;
+        ((normalized.y / len) * directionBias) * 20 * jitterScale +
+        (stableUnit(`dir-bias-y-${personId}-${fragment}`, seed + 2) * 2 - 1) * 12 * jitterScale;
     }
   }
 
@@ -183,27 +194,33 @@ export const generateBranchCandidates = (
   const candidates: BranchCandidate[] = [];
   const personId = input.ownerPersonId;
 
-  for (let index = 0; index < input.candidateCount; index += 1) {
+  // Role-based generation parameters
+  const rolePolicy = ROLE_GROWTH_POLICIES[input.branchRole];
+  const effectiveCount = Math.max(1, Math.round(input.candidateCount * rolePolicy.candidateCountRatio));
+  const effectiveMaxCurvature = input.config.maxCurvature * rolePolicy.maxCurvatureRatio;
+  const effectiveMinLength = input.config.minimumBranchLength * rolePolicy.lengthMinRatio;
+
+  for (let index = 0; index < effectiveCount; index += 1) {
     const seed = input.seed + index * 7 + 3;
     const p1 = generateControlPoint(
       input.startPoint,
       input.endPoint,
       input.startDirection,
-      0,
-      seed,
-      personId,
-      0.6 + (stableUnit(`ds-${index}`, seed) * 0.4),
+      0, seed, personId,
+      rolePolicy.directionPersistence,
       input.attractors,
+      rolePolicy.jitterScale,
+      rolePolicy.attractorBias,
     );
     const p2 = generateControlPoint(
       input.startPoint,
       input.endPoint,
       input.startDirection,
-      1,
-      seed + 3,
-      personId,
-      0.4 + (stableUnit(`ds2-${index}`, seed + 1) * 0.4),
+      1, seed + 3, personId,
+      rolePolicy.directionPersistence * 0.85,
       input.attractors,
+      rolePolicy.jitterScale,
+      rolePolicy.attractorBias,
     );
 
     const curve: CubicBezier = {
@@ -223,11 +240,11 @@ export const generateBranchCandidates = (
     const maxCurvature = computeMaxCurvature(curve);
     const rejectionReasons: BranchRejectionReason[] = [];
 
-    // Hard candidate rejection checks
-    if (length < input.config.minimumBranchLength) {
+    // Role-sensitive rejection checks
+    if (length < effectiveMinLength) {
       rejectionReasons.push("TOO_SHORT");
     }
-    if (maxCurvature > input.config.maxCurvature) {
+    if (maxCurvature > effectiveMaxCurvature) {
       rejectionReasons.push("EXCESSIVE_CURVATURE");
     }
     if (!curveRespectsTerritory(curve, input.templatePolygon, false)) {
@@ -286,8 +303,7 @@ export const DEFAULT_SCORE_WEIGHTS: CandidateScoreWeights = Object.freeze({
 
 export const scoreBranchCandidates = (
   candidates: readonly BranchCandidate[],
-  startDirection: Vec2 | null,
-  attractorField: AttractorField,
+  input: CandidateGenerationInput,
   seed: number,
   weights: CandidateScoreWeights = DEFAULT_SCORE_WEIGHTS,
 ): readonly BranchCandidate[] => {
@@ -296,6 +312,14 @@ export const scoreBranchCandidates = (
 
   const maxLength = Math.max(...validCandidates.map((c) => c.length), 1);
   const maxCurvature = Math.max(...validCandidates.map((c) => c.maxCurvature), 0.01);
+
+  // Role and zone bonus factors
+  const roleScoreBonus = computeRoleScoreBonus(
+    input.branchRole,
+    input.genealogyDepth,
+    input.descendantCount,
+    input.isTerminal,
+  );
 
   const scored: BranchCandidate[] = candidates.map((candidate) => {
     if (!candidate.valid) return candidate;
@@ -309,14 +333,14 @@ export const scoreBranchCandidates = (
 
     // 3. Direction continuity (consistency with parent direction)
     let directionScore = 0.5;
-    if (startDirection !== null) {
+    if (input.startDirection !== null) {
       const branchVec = subtract(candidate.endPoint, candidate.startPoint);
       const branchLen = Math.hypot(branchVec.x, branchVec.y);
       if (branchLen > 1e-9) {
         const normalizedBranch = normalize(branchVec);
         const dot =
-          normalizedBranch.x * startDirection.x +
-          normalizedBranch.y * startDirection.y;
+          normalizedBranch.x * input.startDirection.x +
+          normalizedBranch.y * input.startDirection.y;
         directionScore = Math.max(0, Math.min(1, (dot + 1) / 2));
       }
     }
@@ -327,22 +351,50 @@ export const scoreBranchCandidates = (
 
     // 5. Attractor alignment
     const midpoint = lerp(candidate.startPoint, candidate.endPoint, 0.5);
-    const attractorForce = computeAttractorForce(midpoint, attractorField, seed);
+    const attractorForce = computeAttractorForce(midpoint, input.attractors, seed);
     const branchDir = normalize(subtract(candidate.endPoint, candidate.startPoint));
     const attractorScore = Math.max(
-      0,
-      Math.min(
-        1,
+      0, Math.min(1,
         (branchDir.x * attractorForce.x + branchDir.y * attractorForce.y + 1) / 2,
       ),
     );
+
+    // 6. Role fitness bonus
+    const roleFitnessScore = roleScoreBonus;
+
+    // 7. Zone compliance — translation-invariant via templateHeight
+    const zoneComplianceScore = computeZoneComplianceScore(
+      input.verticalZone,
+      input.startPoint.y,
+      candidate.endPoint.y,
+      input.templateHeight,
+    ) * 0.1;
+
+    // 8. Sibling competition
+    const candidateAngle = Math.atan2(
+      candidate.endPoint.y - candidate.startPoint.y,
+      candidate.endPoint.x - candidate.startPoint.x,
+    );
+    const siblingScore = computeSiblingCompetitionScore(input.siblingDirections, candidateAngle) * 0.05;
+
+    // 9. Free-space seeking
+    const freeSpaceScore = computeFreeSpaceScore(
+      candidate.endPoint,
+      input.existingEndpoints,
+      input.templateHeight * 1.6,
+      input.templateHeight,
+    ) * 0.05;
 
     const totalScore =
       smoothnessScore * weights.smoothnessWeight +
       naturalnessScore * weights.naturalnessWeight +
       directionScore * weights.directionContinuityWeight +
       lengthScore * weights.lengthEfficiencyWeight +
-      attractorScore * weights.attractorAlignmentWeight;
+      attractorScore * weights.attractorAlignmentWeight +
+      roleFitnessScore +
+      zoneComplianceScore +
+      siblingScore +
+      freeSpaceScore;
 
     return {
       ...candidate,
