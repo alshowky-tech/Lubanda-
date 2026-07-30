@@ -58,7 +58,7 @@ export interface CollisionConfig {
 export interface LabelConfig {
   readonly minimumFontSize: number;
   readonly maximumRotationDegrees: number;
-  readonly maximumBacktrackDepth?: number;
+  readonly maximumBacktrackDepth: number;
 }
 
 export interface StabilityConfig {

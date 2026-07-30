@@ -13,8 +13,6 @@ import type {
   UnresolvedLabelReason,
 } from "./types.js";
 
-const DEFAULT_MAXIMUM_BACKTRACK_DEPTH = 10;
-
 const FAMILY_PRIORITY: Readonly<Record<LabelCandidateFamily, number>> = Object.freeze({
   ALIGNED_WITH_BRANCH: 1,
   OFFSET_ABOVE_BRANCH: 2,
@@ -84,6 +82,7 @@ export const assignCandidates = (input: LabelAssignmentInput): LabelAssignmentRe
     orderedCandidatesByPerson,
     collisionQuery,
   };
+  const personOrderIndex = buildPersonOrderIndex(personOrder);
   const unplacedByPerson = new Map<PersonId, UnresolvedLabelReason>();
 
   for (const person of personOrder) {
@@ -101,52 +100,14 @@ export const assignCandidates = (input: LabelAssignmentInput): LabelAssignmentRe
       continue;
     }
 
-    if (placeFirstFittingCandidate(person.personId, 0, state)) continue;
-
-    if (maximumBacktrackDepth === 0) {
-      unplacedByPerson.set(person.personId, makeUnplacedReason(
-        person.personId,
-        "ALL_CANDIDATES_COLLIDE",
-        orderedCandidates.length,
-      ));
-      continue;
-    }
-
-    let placedAfterBacktrack = false;
-    let exhaustedBudget = false;
-    let remainingBacktrackDepth = maximumBacktrackDepth;
-    const displacedPersons: PersonId[] = [];
-
-    while (!placedAfterBacktrack && remainingBacktrackDepth > 0) {
-      const backtrack = backtrackChronologically(state, remainingBacktrackDepth);
-      remainingBacktrackDepth -= backtrack.poppedFrameCount;
-      exhaustedBudget = backtrack.exhaustedBudget || remainingBacktrackDepth <= 0;
-      displacedPersons.push(...backtrack.displacedPersons);
-
-      if (!backtrack.foundAlternative) break;
-      placedAfterBacktrack = placeFirstFittingCandidate(person.personId, 0, state);
-      if (placedAfterBacktrack) break;
-      if (exhaustedBudget) break;
-    }
-
-    for (const displacedPersonId of displacedPersons) {
-      if (!hasPlacementForPerson(state.placements, displacedPersonId) && !unplacedByPerson.has(displacedPersonId)) {
-        const displacedCandidateCount = orderedCandidatesByPerson.get(displacedPersonId)?.length ?? 0;
-        unplacedByPerson.set(displacedPersonId, makeUnplacedReason(
-          displacedPersonId,
-          "BACKTRACK_EXHAUSTED",
-          displacedCandidateCount,
-        ));
-      }
-    }
-
-    if (!placedAfterBacktrack) {
-      unplacedByPerson.set(person.personId, makeUnplacedReason(
-        person.personId,
-        exhaustedBudget ? "BACKTRACK_EXHAUSTED" : "ALL_CANDIDATES_COLLIDE",
-        orderedCandidates.length,
-      ));
-    }
+    assignPersonWithBacktracking(
+      person.personId,
+      state,
+      maximumBacktrackDepth,
+      personOrderIndex,
+      unplacedByPerson,
+      new Set<PersonId>(),
+    );
   }
 
   const placements = Object.freeze([...state.placements].sort(comparePlacementByPersonId));
@@ -207,6 +168,94 @@ export const buildPersonOrder = (
     .sort(compareOrderedPersons));
 };
 
+const assignPersonWithBacktracking = (
+  personId: PersonId,
+  state: AssignmentState,
+  maximumBacktrackDepth: number,
+  personOrderIndex: ReadonlyMap<PersonId, number>,
+  unplacedByPerson: Map<PersonId, UnresolvedLabelReason>,
+  activeReassignments: ReadonlySet<PersonId>,
+): boolean => {
+  if (hasPlacementForPerson(state.placements, personId)) return true;
+  if (unplacedByPerson.has(personId)) return false;
+
+  const orderedCandidates = state.orderedCandidatesByPerson.get(personId) ?? [];
+  if (orderedCandidates.length === 0) {
+    unplacedByPerson.set(personId, makeUnplacedReason(
+      personId,
+      "NO_CANDIDATES_GENERATED",
+      0,
+    ));
+    return false;
+  }
+
+  if (placeFirstFittingCandidate(personId, 0, state)) return true;
+
+  if (maximumBacktrackDepth === 0 || activeReassignments.has(personId)) {
+    unplacedByPerson.set(personId, makeUnplacedReason(
+      personId,
+      "ALL_CANDIDATES_COLLIDE",
+      orderedCandidates.length,
+    ));
+    return false;
+  }
+
+  let exhaustedBudget = false;
+  let remainingBacktrackDepth = maximumBacktrackDepth;
+  const nextActiveReassignments = new Set<PersonId>(activeReassignments);
+  nextActiveReassignments.add(personId);
+
+  while (remainingBacktrackDepth > 0) {
+    const backtrack = backtrackChronologically(state, remainingBacktrackDepth);
+    remainingBacktrackDepth -= backtrack.poppedFrameCount;
+    exhaustedBudget = backtrack.exhaustedBudget || remainingBacktrackDepth <= 0;
+
+    if (!backtrack.foundAlternative) break;
+
+    for (const displacedPersonId of orderDisplacedPersons(backtrack.displacedPersons, personOrderIndex)) {
+      if (hasPlacementForPerson(state.placements, displacedPersonId) || unplacedByPerson.has(displacedPersonId)) {
+        continue;
+      }
+      assignPersonWithBacktracking(
+        displacedPersonId,
+        state,
+        maximumBacktrackDepth,
+        personOrderIndex,
+        unplacedByPerson,
+        nextActiveReassignments,
+      );
+    }
+
+    if (placeFirstFittingCandidate(personId, 0, state)) return true;
+    if (exhaustedBudget) break;
+  }
+
+  if (!unplacedByPerson.has(personId)) {
+    unplacedByPerson.set(personId, makeUnplacedReason(
+      personId,
+      exhaustedBudget ? "BACKTRACK_EXHAUSTED" : "ALL_CANDIDATES_COLLIDE",
+      orderedCandidates.length,
+    ));
+  }
+  return false;
+};
+
+const buildPersonOrderIndex = (
+  personOrder: readonly OrderedPerson[],
+): ReadonlyMap<PersonId, number> => new Map(
+  personOrder.map((person, index) => [person.personId, index]),
+);
+
+const orderDisplacedPersons = (
+  displacedPersons: readonly PersonId[],
+  personOrderIndex: ReadonlyMap<PersonId, number>,
+): readonly PersonId[] => Object.freeze([...new Set(displacedPersons)].sort((left, right) => {
+  const leftIndex = personOrderIndex.get(left) ?? Number.MAX_SAFE_INTEGER;
+  const rightIndex = personOrderIndex.get(right) ?? Number.MAX_SAFE_INTEGER;
+  if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+  return String(left).localeCompare(String(right), "en");
+}));
+
 const buildCandidateOrders = (
   personCandidateMap: ReadonlyMap<PersonId, readonly LabelCandidate[]>,
 ): ReadonlyMap<PersonId, readonly OrderedCandidate[]> => {
@@ -218,7 +267,7 @@ const buildCandidateOrders = (
 };
 
 const normalizedBacktrackDepth = (configuration: LabelConfig): number => {
-  const value = configuration.maximumBacktrackDepth ?? DEFAULT_MAXIMUM_BACKTRACK_DEPTH;
+  const value = configuration.maximumBacktrackDepth;
   if (!Number.isInteger(value) || value < 0 || value > 100) {
     throw new TypeError("maximumBacktrackDepth must be an integer from 0 to 100 inclusive");
   }

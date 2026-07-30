@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { asPersonId, asSkeletonBranchId, asSkeletonPlanId } from "../../../src/core/contracts/identifiers.js";
+import { DEFAULT_ENGINE_CONFIGURATION } from "../../../src/core/config/defaults.js";
 import type { LabelConfig } from "../../../src/core/config/types.js";
 import type { Bounds, Vec2 } from "../../../src/core/geometry/types.js";
 import type { SkeletonBranch, SkeletonPlan } from "../../../src/core/skeleton/types.js";
@@ -125,6 +126,14 @@ describe("DefaultLabelCollisionQuery", () => {
     expect(query.leadersCross({ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }, { x: 10, y: 0 })).toBe(true);
     expect(query.leadersCross({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 })).toBe(false);
   });
+
+  it("treats leader COLLINEAR_OVERLAP as a conflict", () => {
+    expect(query.leadersCross({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 0 }, { x: 15, y: 0 })).toBe(true);
+  });
+
+  it("allows leader COLLINEAR_TOUCH", () => {
+    expect(query.leadersCross({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 })).toBe(false);
+  });
 });
 
 describe("LabelAssignmentEngine ordering", () => {
@@ -192,6 +201,33 @@ describe("LabelAssignmentEngine assignment", () => {
     expect(result.unplacedPersons).toEqual([]);
   });
 
+  it("replays displaced persons in deterministic order after multi-frame backtracking", () => {
+    const result = assignCandidates({
+      skeletonPlan: skeleton([["a", 1], ["b", 1], ["c", 1]]),
+      generatedCandidates: generated([
+        ["a", [
+          candidate("a", 0, bounds(0, 0, 10, 10), { score: 2 }),
+          candidate("a", 1, bounds(100, 0, 110, 10), { score: 1 }),
+        ]],
+        ["b", [
+          candidate("b", 0, bounds(30, 0, 40, 10), { score: 2 }),
+          candidate("b", 1, bounds(5, 0, 15, 10), { score: 1 }),
+        ]],
+        ["c", [
+          candidate("c", 0, bounds(5, 5, 15, 15)),
+          candidate("c", 1, bounds(6, 6, 16, 16)),
+          candidate("c", 2, bounds(7, 7, 17, 17)),
+        ]],
+      ]),
+      configuration: config(2),
+    });
+
+    expect(result.unplacedPersons).toEqual([]);
+    expect(placementIds(result)).toEqual(["a", "b", "c"]);
+    expect(result.placements.find((placement) => String(placement.personId) === "a")?.bounds).toEqual(bounds(100, 0, 110, 10));
+    expect(result.placements.find((placement) => String(placement.personId) === "b")?.bounds).toEqual(bounds(30, 0, 40, 10));
+  });
+
   it("records BACKTRACK_EXHAUSTED when the bounded budget is consumed and continues", () => {
     const result = assignCandidates({
       skeletonPlan: skeleton([["a", 1], ["b", 1], ["c", 1], ["d", 1]]),
@@ -230,6 +266,47 @@ describe("LabelAssignmentEngine assignment", () => {
     expect(placementIds(result)).toEqual(["a"]);
     expect(unplacedCodes(result)).toEqual({ b: "NO_CANDIDATES_GENERATED" });
     expect(result.metrics).toMatchObject({ totalPersonCount: 2, placedLabelCount: 1, unplacedLabelCount: 1 });
+  });
+
+  it("does not mutate input candidate arrays, maps, or objects", () => {
+    const firstCandidate = candidate("a", 0, bounds(0, 0, 10, 10));
+    const secondCandidate = candidate("a", 1, bounds(20, 0, 30, 10));
+    const candidateArray = [firstCandidate, secondCandidate];
+    const personCandidateMap = new Map([[id("a"), candidateArray]]);
+    const generatedCandidates: GeneratedCandidatesResult = Object.freeze({
+      allCandidates: Object.freeze([...candidateArray]),
+      validCandidates: Object.freeze([...candidateArray]),
+      personCandidateMap,
+      totalGeneratablePeople: 1,
+      diagnostics: Object.freeze([]),
+    });
+    const originalArray = [...candidateArray];
+    const originalBounds = { ...firstCandidate.bounds };
+
+    assignCandidates({
+      skeletonPlan: skeleton([["a", 1]]),
+      generatedCandidates,
+      configuration: config(),
+    });
+
+    expect(candidateArray).toEqual(originalArray);
+    expect(personCandidateMap.get(id("a"))).toBe(candidateArray);
+    expect(firstCandidate.bounds).toEqual(originalBounds);
+    expect(secondCandidate).toBe(originalArray[1]);
+  });
+
+  it("accepts maximumBacktrackDepth 100 and rejects 101", () => {
+    const input = {
+      skeletonPlan: skeleton([["a", 1]]),
+      generatedCandidates: generated([["a", [candidate("a", 0, bounds(0, 0, 10, 10))]]]),
+    };
+
+    expect(() => assignCandidates({ ...input, configuration: config(100) })).not.toThrow();
+    expect(() => assignCandidates({ ...input, configuration: config(101) })).toThrow(TypeError);
+  });
+
+  it("includes maximumBacktrackDepth 10 in the default configuration", () => {
+    expect(DEFAULT_ENGINE_CONFIGURATION.labels.maximumBacktrackDepth).toBe(10);
   });
 
   it("is deterministically repeatable", () => {

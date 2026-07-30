@@ -108,7 +108,7 @@ const buildInput = async (
     skeletonNodeMap: new Map(),
     graph,
     nameMap: new Map([[pid ?? FAKE_PID, name]]),
-    configuration: Object.freeze({ minimumFontSize: 12, maximumRotationDegrees: 20 }),
+    configuration: Object.freeze({ minimumFontSize: 12, maximumRotationDegrees: 20, maximumBacktrackDepth: 10 }),
     collisionQuery: query ?? new MockCollisionQuery(),
     templateBoundary: Object.freeze({ points: Object.freeze([{ x: 0, y: 0 }, { x: 5000, y: 0 }, { x: 5000, y: 3000 }, { x: 0, y: 3000 }]) }),
     textMeasurementService: measurer,

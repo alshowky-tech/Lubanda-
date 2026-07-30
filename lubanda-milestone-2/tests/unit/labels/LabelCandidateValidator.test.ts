@@ -62,7 +62,7 @@ const concaveQuery = (): CandidateCollisionQuery => {
 };
 
 const BID = "b1" as SkeletonBranchId;
-const CFG = { minimumFontSize: 12, maximumRotationDegrees: 20 };
+const CFG = { minimumFontSize: 12, maximumRotationDegrees: 20, maximumBacktrackDepth: 10 };
 
 const makeBranch = (): SkeletonBranch => ({
   id: BID,
