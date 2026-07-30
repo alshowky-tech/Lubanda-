@@ -92,6 +92,19 @@ const placementIds = (result: LabelAssignmentResult): readonly string[] =>
 const unplacedCodes = (result: LabelAssignmentResult): Readonly<Record<string, string>> =>
   Object.fromEntries(result.unplacedPersons.map((reason) => [String(reason.personId), reason.code]));
 
+const assertCompleteTerminalOutcomes = (result: LabelAssignmentResult): void => {
+  const placedIds = result.placements.map((placement) => String(placement.personId));
+  const unresolvedIds = result.unplacedPersons.map((reason) => String(reason.personId));
+  const uniquePlaced = new Set(placedIds);
+  const uniqueUnresolved = new Set(unresolvedIds);
+  const overlap = placedIds.filter((personId) => uniqueUnresolved.has(personId));
+
+  expect(uniquePlaced.size).toBe(placedIds.length);
+  expect(uniqueUnresolved.size).toBe(unresolvedIds.length);
+  expect(overlap).toEqual([]);
+  expect(uniquePlaced.size + uniqueUnresolved.size).toBe(result.metrics.totalPersonCount);
+};
+
 describe("DefaultLabelCollisionQuery", () => {
   const query = new DefaultLabelCollisionQuery();
 
@@ -254,6 +267,48 @@ describe("LabelAssignmentEngine assignment", () => {
     expect(placementIds(result)).toEqual(["a", "c"]);
     expect(unplacedCodes(result)).toEqual({ b: "BACKTRACK_EXHAUSTED" });
     expect(result.placements.find((placement) => String(placement.personId) === "a")?.bounds).toEqual(bounds(5, 0, 35, 10));
+  });
+
+  it("restores previous placements when backtracking cannot find an alternative", () => {
+    const result = assignCandidates({
+      skeletonPlan: skeleton([["a", 1], ["b", 1], ["c", 1]]),
+      generatedCandidates: generated([
+        ["a", [candidate("a", 0, bounds(0, 0, 10, 10))]],
+        ["b", [candidate("b", 0, bounds(30, 0, 40, 10))]],
+        ["c", [
+          candidate("c", 0, bounds(5, 5, 35, 15)),
+          candidate("c", 1, bounds(6, 6, 36, 16)),
+          candidate("c", 2, bounds(7, 7, 37, 17)),
+        ]],
+      ]),
+      configuration: config(2),
+    });
+
+    expect(placementIds(result)).toEqual(["a", "b"]);
+    expect(unplacedCodes(result)).toEqual({ c: "BACKTRACK_EXHAUSTED" });
+    assertCompleteTerminalOutcomes(result);
+  });
+
+  it("does not let displaced persons disappear from both terminal result sets", () => {
+    const result = assignCandidates({
+      skeletonPlan: skeleton([["a", 1], ["b", 1], ["c", 1], ["d", 1]]),
+      generatedCandidates: generated([
+        ["a", [candidate("a", 0, bounds(0, 0, 10, 10))]],
+        ["b", [candidate("b", 0, bounds(30, 0, 40, 10))]],
+        ["c", [candidate("c", 0, bounds(60, 0, 70, 10))]],
+        ["d", [
+          candidate("d", 0, bounds(5, 5, 65, 15)),
+          candidate("d", 1, bounds(6, 6, 66, 16)),
+          candidate("d", 2, bounds(7, 7, 67, 17)),
+          candidate("d", 3, bounds(8, 8, 68, 18)),
+        ]],
+      ]),
+      configuration: config(3),
+    });
+
+    expect(placementIds(result)).toEqual(["a", "b", "c"]);
+    expect(unplacedCodes(result)).toEqual({ d: "BACKTRACK_EXHAUSTED" });
+    assertCompleteTerminalOutcomes(result);
   });
 
   it("records BACKTRACK_EXHAUSTED when the bounded budget is consumed and continues", () => {

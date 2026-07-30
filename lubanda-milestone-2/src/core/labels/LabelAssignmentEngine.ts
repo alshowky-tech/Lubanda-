@@ -74,6 +74,12 @@ interface BacktrackBudget {
   remaining: number;
 }
 
+interface AssignmentSnapshot {
+  readonly placements: readonly LabelPlacement[];
+  readonly decisionStack: readonly DecisionFrame[];
+  readonly unplacedEntries: readonly (readonly [PersonId, UnresolvedLabelReason])[];
+}
+
 export const assignCandidates = (input: LabelAssignmentInput): LabelAssignmentResult => {
   const maximumBacktrackDepth = normalizedBacktrackDepth(input.configuration);
   const collisionQuery = input.collisionQuery ?? new DefaultLabelCollisionQuery();
@@ -220,11 +226,15 @@ const assignPersonWithBacktracking = (
   nextActiveReassignments.add(personId);
 
   while (budget.remaining > 0) {
+    const snapshot = captureAssignmentSnapshot(state, unplacedByPerson);
     const backtrack = backtrackChronologically(state, budget.remaining);
     budget.remaining -= backtrack.poppedFrameCount;
     exhaustedBudget = backtrack.exhaustedBudget || budget.remaining <= 0;
 
-    if (!backtrack.foundAlternative) break;
+    if (!backtrack.foundAlternative) {
+      restoreAssignmentSnapshot(snapshot, state, unplacedByPerson);
+      break;
+    }
 
     for (const displacedPersonId of orderDisplacedPersons(backtrack.displacedPersons, personOrderIndex)) {
       if (hasPlacementForPerson(state.placements, displacedPersonId) || unplacedByPerson.has(displacedPersonId)) {
@@ -253,6 +263,28 @@ const assignPersonWithBacktracking = (
     ));
   }
   return false;
+};
+
+const captureAssignmentSnapshot = (
+  state: AssignmentState,
+  unplacedByPerson: ReadonlyMap<PersonId, UnresolvedLabelReason>,
+): AssignmentSnapshot => Object.freeze({
+  placements: Object.freeze([...state.placements]),
+  decisionStack: Object.freeze([...state.decisionStack]),
+  unplacedEntries: Object.freeze([...unplacedByPerson.entries()]),
+});
+
+const restoreAssignmentSnapshot = (
+  snapshot: AssignmentSnapshot,
+  state: AssignmentState,
+  unplacedByPerson: Map<PersonId, UnresolvedLabelReason>,
+): void => {
+  state.placements.splice(0, state.placements.length, ...snapshot.placements);
+  state.decisionStack.splice(0, state.decisionStack.length, ...snapshot.decisionStack);
+  unplacedByPerson.clear();
+  for (const [personId, reason] of snapshot.unplacedEntries) {
+    unplacedByPerson.set(personId, reason);
+  }
 };
 
 const buildPersonOrderIndex = (
