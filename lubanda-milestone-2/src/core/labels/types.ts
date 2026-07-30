@@ -73,6 +73,7 @@ export interface LabelCandidateRejectionRecord {
 }
 
 export interface LabelCandidate {
+  readonly candidateId?: string;
   readonly personId: PersonId;
   readonly bounds: Bounds;
   readonly anchor: Vec2;

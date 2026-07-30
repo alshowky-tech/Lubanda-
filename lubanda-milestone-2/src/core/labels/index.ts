@@ -4,6 +4,8 @@ export * from "./TextMeasurer.js";
 export * from "./ArabicShaper.js";
 export * from "./BidiProcessor.js";
 export * from "./CandidateCollisionQuery.js";
+export * from "./LabelCollisionQuery.js";
+export * from "./LabelAssignmentEngine.js";
 export * from "./LabelCandidateGenerator.js";
 export * from "./LabelCandidateScorer.js";
 export * from "./LabelCandidateValidator.js";
