@@ -13,6 +13,10 @@ import { evaluateCubicBezier } from "../geometry/bezier.js";
 import { classifyPointInPolygon } from "../geometry/polygon.js";
 import type { CubicBezier, Vec2, Polygon } from "../geometry/types.js";
 import type { Person } from "../genealogy/types.js";
+import {
+  classifyBranchRole,
+  determineVerticalZone,
+} from "./BranchClassification.js";
 import { buildAttractorField } from "./AttractorField.js";
 import { computeBranchThickness } from "./BranchThickness.js";
 import {
@@ -26,6 +30,7 @@ import type {
   SkeletonGrowthInput,
   SkeletonPlan,
   SkeletonBranch,
+  SkeletonBranchRole,
   SkeletonNode,
   TrunkSkeleton,
   MappedJunction,
@@ -225,6 +230,8 @@ export class DeterministicSkeletonGrowthEngine
         generation: 0,
         genealogyDepth: 0,
         territoryId: null,
+        branchRole: 'TRUNK' as const,
+        verticalZone: determineVerticalZone(trunkJunctionPoint.y, bounds),
         curve: trunkSegmentCurve,
         startPoint: previousTrunkPoint,
         endPoint: trunkJunctionPoint,
@@ -315,6 +322,8 @@ export class DeterministicSkeletonGrowthEngine
         generation: 0,
         genealogyDepth: 0,
         territoryId: null,
+        branchRole: 'TRUNK' as const,
+        verticalZone: determineVerticalZone(clampedTerminal.y, bounds),
         curve: finalCurve,
         startPoint: previousTrunkPoint,
         endPoint: clampedTerminal,
@@ -596,6 +605,8 @@ export class DeterministicSkeletonGrowthEngine
         parentBranchId,
         generation: skeletonDepth,
         genealogyDepth,
+        branchRole: classifyBranchRole(genealogyDepth, skeletonDepth, children.length === 0, input.graph.getSubtree(personId).length, input.graph.getSubtree(input.selectedRootId).length) as SkeletonBranchRole,
+        verticalZone: determineVerticalZone(endPoint.y, bounds),
         territoryId: territory?.id ?? null,
         curve: branchCurve,
         startPoint,
@@ -976,12 +987,15 @@ export class DeterministicSkeletonGrowthEngine
             parentId === input.selectedRootId
               ? territoryByOwner.get(personId)
               : undefined;
+          const branchRole: SkeletonBranchRole = classifyBranchRole(depth, depth, children.length === 0, subtreeSize, input.graph.getSubtree(input.selectedRootId).length) as SkeletonBranchRole;
           const branch: SkeletonBranch = {
             id: branchId,
             ownerPersonId: personId,
             parentBranchId,
             generation: depth,
             genealogyDepth: depth,
+            branchRole,
+            verticalZone: determineVerticalZone(endPoint.y, bounds),
             territoryId: majorTerritory?.id ?? null,
             curve,
             startPoint: { ...startPoint },

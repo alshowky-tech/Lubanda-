@@ -22,6 +22,8 @@ const branch = (
     p2: { x, y: 60 },
     p3: { x, y: 50 },
   },
+  branchRole: "SECONDARY" as const,
+  verticalZone: "INNER_CANOPY" as const,
   startPoint: { x, y: 80 },
   endPoint: { x, y: 50 },
   length: 30,

@@ -17,6 +17,41 @@ import type { TerritoryPlan } from "../territory/types.js";
 // ── Brand type helpers ────────────────────────────────────────────────
 // (SkeletonBranchId and SkeletonPlanId are defined in contracts/identifiers)
 
+// ── Skeleton Engine 2.0 — Structural Classification ───────────────────
+
+/**
+ * Deterministic structural branch classification derived from topology
+ * and structural importance.
+ *
+ * - TRUNK: The main vertical stem (generation 0).
+ * - PRIMARY: Major lineage branches directly off the trunk (genealogyDepth 1)
+ *            with large descendant subtrees.
+ * - SECONDARY: Moderate branches (medium genealogy depth, moderate subtree).
+ * - TWIG: Small, fine branches (high genealogy depth, small subtree).
+ * - TERMINAL_TWIG: Leaf-position branches at genealogy terminals with no
+ *                  children.
+ */
+export type SkeletonBranchRole =
+  | "TRUNK"
+  | "PRIMARY"
+  | "SECONDARY"
+  | "TWIG"
+  | "TERMINAL_TWIG";
+
+/**
+ * Vertical zones for growth policy.
+ *
+ * - ROOT_ZONE: Near the root entry (±15% of template height).
+ * - TRUNK_ZONE: Near the trunk (15%–30% of template height).
+ * - INNER_CANOPY: Intermediate canopy (30%–60% of template height).
+ * - OUTER_CANOPY: Outer canopy (60%–100% of template height).
+ */
+export type VerticalZone =
+  | "ROOT_ZONE"
+  | "TRUNK_ZONE"
+  | "INNER_CANOPY"
+  | "OUTER_CANOPY";
+
 // ── Skeleton node types ───────────────────────────────────────────────
 
 export type SkeletonNodeKind =
@@ -51,7 +86,9 @@ export type BranchRejectionReason =
   | "TERRITORY_BOUNDARY_CROSSED"
   | "CANDIDATE_DEGENERATE"
   | "NO_VALID_CANDIDATE"
-  | "JUNCTION_OUT_OF_BOUNDS";
+  | "JUNCTION_OUT_OF_BOUNDS"
+  | "ROLE_GROWTH_VIOLATION"
+  | "ZONE_GROWTH_VIOLATION";
 
 export interface CandidateRejectionRecord {
   readonly candidateIndex: number;
@@ -66,6 +103,8 @@ export interface SkeletonBranch {
   readonly generation: number;               // depth in the skeleton tree (0=trunk)
   readonly genealogyDepth: number;           // depth in the genealogy tree
   readonly territoryId: TerritoryId | null;   // territory this branch belongs to
+  readonly branchRole: SkeletonBranchRole;    // Skeleton Engine 2.0 classification
+  readonly verticalZone: VerticalZone;         // Skeleton Engine 2.0 vertical zone
   readonly curve: CubicBezier;                // the smooth Bezier curve path
   readonly startPoint: Vec2;
   readonly endPoint: Vec2;
