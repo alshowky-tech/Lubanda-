@@ -228,6 +228,34 @@ describe("LabelAssignmentEngine assignment", () => {
     expect(result.placements.find((placement) => String(placement.personId) === "b")?.bounds).toEqual(bounds(30, 0, 40, 10));
   });
 
+  it("shares one backtracking budget across displaced-person replay", () => {
+    const result = assignCandidates({
+      skeletonPlan: skeleton([["a", 1], ["b", 1], ["c", 1]]),
+      generatedCandidates: generated([
+        ["a", [
+          candidate("a", 0, bounds(0, 0, 10, 10), { score: 3 }),
+          candidate("a", 1, bounds(5, 0, 35, 10), { score: 2 }),
+          candidate("a", 2, bounds(100, 0, 110, 10), { score: 1 }),
+        ]],
+        ["b", [
+          candidate("b", 0, bounds(30, 0, 40, 10), { score: 3 }),
+          candidate("b", 1, bounds(5, 0, 15, 10), { score: 2 }),
+          candidate("b", 2, bounds(0, 0, 10, 10), { score: 1 }),
+        ]],
+        ["c", [
+          candidate("c", 0, bounds(40, 0, 50, 10), { score: 3 }),
+          candidate("c", 1, bounds(39, 0, 49, 10), { score: 2 }),
+          candidate("c", 2, bounds(35, 0, 105, 10), { score: 1 }),
+        ]],
+      ]),
+      configuration: config(2),
+    });
+
+    expect(placementIds(result)).toEqual(["a", "c"]);
+    expect(unplacedCodes(result)).toEqual({ b: "BACKTRACK_EXHAUSTED" });
+    expect(result.placements.find((placement) => String(placement.personId) === "a")?.bounds).toEqual(bounds(5, 0, 35, 10));
+  });
+
   it("records BACKTRACK_EXHAUSTED when the bounded budget is consumed and continues", () => {
     const result = assignCandidates({
       skeletonPlan: skeleton([["a", 1], ["b", 1], ["c", 1], ["d", 1]]),
@@ -280,11 +308,14 @@ describe("LabelAssignmentEngine assignment", () => {
       totalGeneratablePeople: 1,
       diagnostics: Object.freeze([]),
     });
+    const skeletonPlan = skeleton([["a", 1]]);
     const originalArray = [...candidateArray];
     const originalBounds = { ...firstCandidate.bounds };
+    const originalBranches = [...skeletonPlan.branches];
+    const originalSkeletonPlan = JSON.stringify(skeletonPlan);
 
     assignCandidates({
-      skeletonPlan: skeleton([["a", 1]]),
+      skeletonPlan,
       generatedCandidates,
       configuration: config(),
     });
@@ -293,6 +324,9 @@ describe("LabelAssignmentEngine assignment", () => {
     expect(personCandidateMap.get(id("a"))).toBe(candidateArray);
     expect(firstCandidate.bounds).toEqual(originalBounds);
     expect(secondCandidate).toBe(originalArray[1]);
+    expect(JSON.stringify(skeletonPlan)).toBe(originalSkeletonPlan);
+    expect(skeletonPlan.branches).toEqual(originalBranches);
+    expect(skeletonPlan.branches[0]).toBe(originalBranches[0]);
   });
 
   it("accepts maximumBacktrackDepth 100 and rejects 101", () => {

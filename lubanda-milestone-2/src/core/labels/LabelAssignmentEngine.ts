@@ -70,6 +70,10 @@ interface AssignmentState {
   readonly collisionQuery: LabelCollisionQuery;
 }
 
+interface BacktrackBudget {
+  remaining: number;
+}
+
 export const assignCandidates = (input: LabelAssignmentInput): LabelAssignmentResult => {
   const maximumBacktrackDepth = normalizedBacktrackDepth(input.configuration);
   const collisionQuery = input.collisionQuery ?? new DefaultLabelCollisionQuery();
@@ -104,6 +108,7 @@ export const assignCandidates = (input: LabelAssignmentInput): LabelAssignmentRe
       person.personId,
       state,
       maximumBacktrackDepth,
+      { remaining: maximumBacktrackDepth },
       personOrderIndex,
       unplacedByPerson,
       new Set<PersonId>(),
@@ -172,6 +177,7 @@ const assignPersonWithBacktracking = (
   personId: PersonId,
   state: AssignmentState,
   maximumBacktrackDepth: number,
+  budget: BacktrackBudget,
   personOrderIndex: ReadonlyMap<PersonId, number>,
   unplacedByPerson: Map<PersonId, UnresolvedLabelReason>,
   activeReassignments: ReadonlySet<PersonId>,
@@ -200,15 +206,23 @@ const assignPersonWithBacktracking = (
     return false;
   }
 
+  if (budget.remaining <= 0) {
+    unplacedByPerson.set(personId, makeUnplacedReason(
+      personId,
+      "BACKTRACK_EXHAUSTED",
+      orderedCandidates.length,
+    ));
+    return false;
+  }
+
   let exhaustedBudget = false;
-  let remainingBacktrackDepth = maximumBacktrackDepth;
   const nextActiveReassignments = new Set<PersonId>(activeReassignments);
   nextActiveReassignments.add(personId);
 
-  while (remainingBacktrackDepth > 0) {
-    const backtrack = backtrackChronologically(state, remainingBacktrackDepth);
-    remainingBacktrackDepth -= backtrack.poppedFrameCount;
-    exhaustedBudget = backtrack.exhaustedBudget || remainingBacktrackDepth <= 0;
+  while (budget.remaining > 0) {
+    const backtrack = backtrackChronologically(state, budget.remaining);
+    budget.remaining -= backtrack.poppedFrameCount;
+    exhaustedBudget = backtrack.exhaustedBudget || budget.remaining <= 0;
 
     if (!backtrack.foundAlternative) break;
 
@@ -220,6 +234,7 @@ const assignPersonWithBacktracking = (
         displacedPersonId,
         state,
         maximumBacktrackDepth,
+        budget,
         personOrderIndex,
         unplacedByPerson,
         nextActiveReassignments,
