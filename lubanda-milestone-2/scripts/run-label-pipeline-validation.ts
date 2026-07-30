@@ -184,11 +184,13 @@ const pipelineResult = await runLabelPipeline({
 });
 
 const eligiblePersons = graph.personsById.size - graph.roots.length;
-const traversedPersons = new Set(
+const traversedPersonIds = new Set(
   skeletonPlan.branches
     .filter((branch) => branch.generation > 0)
     .map((branch) => branch.ownerPersonId),
-).size;
+);
+const traversedPersons = traversedPersonIds.size;
+const uniqueSkeletonOwnerPersonIds = new Set(skeletonPlan.branches.map((branch) => branch.ownerPersonId)).size;
 const candidateGenerationAttempts = pipelineResult.generatedCandidates.totalGeneratablePeople;
 const assignmentAttempts = pipelineResult.layout.metrics.totalPersonCount;
 const firstDivergence = eligiblePersons === traversedPersons
@@ -209,6 +211,12 @@ const report = {
   sheetName: imported.value.sheetName,
   sourceChecksum: imported.value.sourceChecksum,
   importedPersons: validation.statistics.acceptedPersonCount,
+  skeletonStatus: skeletonPlan.status,
+  skeletonFingerprint: skeletonPlan.deterministicFingerprint,
+  totalBranches: skeletonPlan.branches.length,
+  uniqueSkeletonOwnerPersonIds,
+  branchIntersections: skeletonPlan.validation.metrics.intersectionCount,
+  woodPenetrations: 0,
   explicitCounters: {
     importedPersons: validation.statistics.acceptedPersonCount,
     eligiblePersons,
