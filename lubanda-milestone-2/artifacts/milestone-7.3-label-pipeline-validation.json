@@ -2,23 +2,39 @@
   "schemaVersion": "1.0",
   "milestone": "7.3-part-2",
   "dataset": "approved-golden-workbook",
-  "sourceWorkbookPath": "/home/user/Lubanda-/golden-dataset-extracted/ديوان_آل_الشوكي_شجرة_الأنساب_2026 (3).xlsx",
+  "sourceWorkbookPath": "/tmp/lubanda-golden/extracted/ديوان_آل_الشوكي_شجرة_الأنساب_2026 (3).xlsx",
   "sheetName": "السلسلة الشوكية الهاشمية",
   "sourceChecksum": "30fb1f4d977ae882b631b727afe50ef2de6ae4c9c8092bd4d7203670cdd35da9",
   "importedPersons": 1386,
+  "explicitCounters": {
+    "importedPersons": 1386,
+    "eligiblePersons": 1385,
+    "traversedPersons": 4,
+    "candidateGenerationAttempts": 4,
+    "generatedCandidates": 16,
+    "validatedCandidates": 16,
+    "assignmentAttempts": 5,
+    "placedLabels": 4
+  },
+  "firstDivergence": {
+    "stage": "SKELETON_TRAVERSAL",
+    "expectedFromPreviousStage": 1385,
+    "actual": 4,
+    "message": "The imported genealogy and demand stages include the golden dataset, but the accepted skeleton traverses fewer generation>0 person branches; label candidate generation consumes only traversed skeleton branches."
+  },
   "generatedCandidates": 16,
   "validCandidates": 16,
   "placedLabels": 4,
   "unresolvedLabels": 1,
   "overlapCount": 0,
   "collisionCount": 0,
-  "runtimeMilliseconds": 405.119,
+  "runtimeMilliseconds": 387.947,
   "peakMemoryUsage": {
     "measurable": true,
     "method": "process.rss high-water approximation over validation boundaries",
-    "initialRssBytes": 99012608,
-    "finalRssBytes": 145113088,
-    "peakRssBytes": 145113088
+    "initialRssBytes": 107028480,
+    "finalRssBytes": 155217920,
+    "peakRssBytes": 155217920
   },
   "deterministicFingerprint": "b8c2f4a62a9690213a7be62a3718436f9f20bc5524cf1dd2948935c463fd4095",
   "unresolvedByReason": {

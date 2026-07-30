@@ -182,6 +182,24 @@ const pipelineResult = await runLabelPipeline({
   cartoucheZones: undefined,
   fixedLabelPlacements: Object.freeze([]),
 });
+
+const eligiblePersons = graph.personsById.size - graph.roots.length;
+const traversedPersons = new Set(
+  skeletonPlan.branches
+    .filter((branch) => branch.generation > 0)
+    .map((branch) => branch.ownerPersonId),
+).size;
+const candidateGenerationAttempts = pipelineResult.generatedCandidates.totalGeneratablePeople;
+const assignmentAttempts = pipelineResult.layout.metrics.totalPersonCount;
+const firstDivergence = eligiblePersons === traversedPersons
+  ? null
+  : {
+      stage: "SKELETON_TRAVERSAL",
+      expectedFromPreviousStage: eligiblePersons,
+      actual: traversedPersons,
+      message: "The imported genealogy and demand stages include the golden dataset, but the accepted skeleton traverses fewer generation>0 person branches; label candidate generation consumes only traversed skeleton branches.",
+    };
+
 const finalRss = process.memoryUsage().rss;
 const report = {
   schemaVersion: "1.0",
@@ -191,6 +209,17 @@ const report = {
   sheetName: imported.value.sheetName,
   sourceChecksum: imported.value.sourceChecksum,
   importedPersons: validation.statistics.acceptedPersonCount,
+  explicitCounters: {
+    importedPersons: validation.statistics.acceptedPersonCount,
+    eligiblePersons,
+    traversedPersons,
+    candidateGenerationAttempts,
+    generatedCandidates: pipelineResult.diagnostics.totalGeneratedCandidates,
+    validatedCandidates: pipelineResult.diagnostics.totalValidCandidates,
+    assignmentAttempts,
+    placedLabels: pipelineResult.layout.metrics.placedLabelCount,
+  },
+  firstDivergence,
   generatedCandidates: pipelineResult.diagnostics.totalGeneratedCandidates,
   validCandidates: pipelineResult.diagnostics.totalValidCandidates,
   placedLabels: pipelineResult.layout.metrics.placedLabelCount,
