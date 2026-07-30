@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0",
+  "milestone": "7.3-part-2",
+  "dataset": "accepted-skeleton-validation-fixture",
+  "totalPersons": 4,
+  "totalGeneratedCandidates": 14,
+  "totalValidCandidates": 14,
+  "placedLabels": 3,
+  "unresolvedLabels": 1,
+  "overlapCount": 0,
+  "collisionCount": 0,
+  "averageLeaderLength": 0,
+  "maximumRotation": 20,
+  "minimumFontSize": 12,
+  "totalRuntimeMilliseconds": 142.146,
+  "peakMemoryUsage": {
+    "measurable": true,
+    "method": "process.rss high-water approximation over validation boundaries",
+    "initialRssBytes": 107335680,
+    "finalRssBytes": 147984384,
+    "peakRssBytes": 147984384
+  },
+  "deterministicFingerprint": "c5cbac6395ea046ef73764c4e2a08a1b6d6c627fbc6528664622d845692999d6",
+  "unresolvedByReason": {
+    "NO_CANDIDATES_GENERATED": 1,
+    "ALL_CANDIDATES_COLLIDE": 0,
+    "BACKTRACK_EXHAUSTED": 0,
+    "GEOMETRY_RELAXATION_FAILED": 0,
+    "TEXT_TOO_LONG": 0,
+    "FONT_MISSING": 0,
+    "INVALID_PERSON_REFERENCE": 0
+  }
+}
